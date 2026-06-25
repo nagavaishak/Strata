@@ -1,5 +1,6 @@
 // Strata — structured parametric payoffs settled by TxLINE Merkle proofs.
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 
 pub mod txoracle_cpi;
 use txoracle_cpi::*;
@@ -64,6 +65,34 @@ pub mod strata {
         p.final_payout_bps = 0;
         p.bump = ctx.bumps.product;
         p.vault_bump = ctx.bumps.vault;
+        Ok(())
+    }
+
+    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        require!(ctx.accounts.product.status == ProductStatus::Open, StrataError::ProductNotOpen);
+        require!(Clock::get()?.unix_timestamp < ctx.accounts.product.closes_at, StrataError::ProductClosed);
+        require!(amount > 0, StrataError::ZeroAmount);
+
+        system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.user.to_account_info(),
+                    to: ctx.accounts.vault.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+
+        let pos = &mut ctx.accounts.position;
+        pos.user = ctx.accounts.user.key();
+        pos.product = ctx.accounts.product.key();
+        pos.stake = pos.stake.checked_add(amount).ok_or(StrataError::Overflow)?;
+        pos.claimed = false;
+        pos.bump = ctx.bumps.position;
+
+        let p = &mut ctx.accounts.product;
+        p.total_stake = p.total_stake.checked_add(amount).ok_or(StrataError::Overflow)?;
         Ok(())
     }
 }
@@ -139,6 +168,18 @@ impl Vault {
     pub const SPACE: usize = 8 + 1;
 }
 
+#[account]
+pub struct Position {
+    pub user: Pubkey,
+    pub product: Pubkey,
+    pub stake: u64,
+    pub claimed: bool,
+    pub bump: u8,
+}
+impl Position {
+    pub const SPACE: usize = 8 + 32 + 32 + 8 + 1 + 1;
+}
+
 // ---------- contexts ----------
 
 #[derive(Accounts)]
@@ -159,6 +200,22 @@ pub struct CreateProduct<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct Deposit<'info> {
+    #[account(mut, seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump)]
+    pub product: Account<'info, Product>,
+    #[account(mut, seeds = [VAULT_SEED, product.key().as_ref()], bump = product.vault_bump)]
+    pub vault: Account<'info, Vault>,
+    #[account(
+        init_if_needed, payer = user, space = Position::SPACE,
+        seeds = [POS_SEED, product.key().as_ref(), user.key().as_ref()], bump
+    )]
+    pub position: Account<'info, Position>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
 // ---------- errors ----------
 
 #[error_code]
@@ -169,4 +226,8 @@ pub enum StrataError {
     #[msg("tier min_legs_true exceeds leg count")] TierOutOfRange,
     #[msg("tiers must be strictly increasing in legs and non-decreasing in payout")] TiersNotMonotonic,
     #[msg("must include a tier for 0 legs true")] MissingZeroTier,
+    #[msg("product not open")] ProductNotOpen,
+    #[msg("product has closed for deposits")] ProductClosed,
+    #[msg("amount must be > 0")] ZeroAmount,
+    #[msg("overflow")] Overflow,
 }
