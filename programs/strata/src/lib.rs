@@ -148,6 +148,60 @@ pub mod strata {
         emit!(LegSettled { product: p.key(), leg_index, won });
         Ok(())
     }
+
+    /// Tallies proven legs into the tier table. Legs left unsettled past settle_deadline
+    /// default to False so the product always resolves to a payout.
+    pub fn finalize_product(ctx: Context<FinalizeProduct>) -> Result<()> {
+        let p = &mut ctx.accounts.product;
+        require!(p.status == ProductStatus::Open, StrataError::ProductNotOpen);
+        let now = Clock::get()?.unix_timestamp;
+
+        let mut legs_true: u8 = 0;
+        for i in 0..(p.num_legs as usize) {
+            match p.leg_results[i] {
+                LegResult::True => legs_true += 1,
+                LegResult::False => {}
+                LegResult::Unsettled => {
+                    require!(now >= p.settle_deadline, StrataError::LegsStillPending);
+                    p.leg_results[i] = LegResult::False;
+                }
+            }
+        }
+
+        let mut payout_bps: u16 = 0;
+        for i in 0..(p.num_tiers as usize) {
+            if legs_true >= p.tiers[i].min_legs_true {
+                payout_bps = p.tiers[i].payout_bps;
+            }
+        }
+
+        p.status = ProductStatus::Settled;
+        p.final_payout_bps = payout_bps;
+        emit!(ProductSettled { product: p.key(), fixture_id: p.fixture_id, legs_true, payout_bps });
+        Ok(())
+    }
+
+    pub fn claim(ctx: Context<Claim>) -> Result<()> {
+        let p = &ctx.accounts.product;
+        require!(p.status == ProductStatus::Settled, StrataError::NotSettled);
+        require!(!ctx.accounts.position.claimed, StrataError::AlreadyClaimed);
+
+        let stake = ctx.accounts.position.stake;
+        require!(stake > 0, StrataError::NothingToClaim);
+
+        let payout = (stake as u128)
+            .checked_mul(p.final_payout_bps as u128).ok_or(StrataError::Overflow)?
+            .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
+
+        if payout > 0 {
+            **ctx.accounts.vault.to_account_info().try_borrow_mut_lamports()? -= payout;
+            **ctx.accounts.user.to_account_info().try_borrow_mut_lamports()? += payout;
+        }
+
+        ctx.accounts.position.claimed = true;
+        emit!(Claimed { product: p.key(), user: ctx.accounts.user.key(), payout });
+        Ok(())
+    }
 }
 
 // ---------- state ----------
@@ -281,6 +335,27 @@ pub struct SettleLeg<'info> {
     pub daily_scores_merkle_roots: UncheckedAccount<'info>,
 }
 
+#[derive(Accounts)]
+pub struct FinalizeProduct<'info> {
+    #[account(mut, seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump)]
+    pub product: Account<'info, Product>,
+}
+
+#[derive(Accounts)]
+pub struct Claim<'info> {
+    #[account(seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump)]
+    pub product: Account<'info, Product>,
+    #[account(mut, seeds = [VAULT_SEED, product.key().as_ref()], bump = product.vault_bump)]
+    pub vault: Account<'info, Vault>,
+    #[account(
+        mut, seeds = [POS_SEED, product.key().as_ref(), user.key().as_ref()], bump = position.bump,
+        has_one = user @ StrataError::Unauthorized
+    )]
+    pub position: Account<'info, Position>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+}
+
 // ---------- events ----------
 
 #[event]
@@ -288,6 +363,21 @@ pub struct LegSettled {
     pub product: Pubkey,
     pub leg_index: u8,
     pub won: bool,
+}
+
+#[event]
+pub struct ProductSettled {
+    pub product: Pubkey,
+    pub fixture_id: i64,
+    pub legs_true: u8,
+    pub payout_bps: u16,
+}
+
+#[event]
+pub struct Claimed {
+    pub product: Pubkey,
+    pub user: Pubkey,
+    pub payout: u64,
 }
 
 // ---------- errors ----------
@@ -309,5 +399,10 @@ pub enum StrataError {
     #[msg("fixture id mismatch")] FixtureMismatch,
     #[msg("stat key mismatch")] StatKeyMismatch,
     #[msg("leg requires a second stat term")] MissingSecondStat,
+    #[msg("legs still pending and before settle_deadline")] LegsStillPending,
+    #[msg("product not settled")] NotSettled,
+    #[msg("already claimed")] AlreadyClaimed,
+    #[msg("nothing to claim")] NothingToClaim,
+    #[msg("unauthorized")] Unauthorized,
     #[msg("overflow")] Overflow,
 }
