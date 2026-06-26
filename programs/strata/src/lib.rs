@@ -1,4 +1,7 @@
 // Strata — structured parametric payoffs settled by TxLINE Merkle proofs.
+// Settlement is permissionless: the program builds each leg's TraderPredicate from the
+// Product's own definition and binds proof material to fixture + stat keys, so no caller
+// (keeper, bot, user) can misrepresent which condition resolved. Trust = the proof, not a signer.
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
@@ -7,7 +10,8 @@ use txoracle_cpi::*;
 
 declare_id!("37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs");
 
-pub const TXORACLE_ID: Pubkey = anchor_lang::solana_program::pubkey!("6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J");
+// devnet TxLINE txoracle program (CPI target)
+pub const TXORACLE_ID: Pubkey = anchor_lang::prelude::pubkey!("6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J");
 
 pub const MAX_LEGS: usize = 5;
 pub const MAX_TIERS: usize = 6;
@@ -42,6 +46,7 @@ pub mod strata {
             last_min = t.min_legs_true as i32;
             last_bps = t.payout_bps as i32;
         }
+        // tier covering 0 legs true must exist so settlement always resolves
         require!(tiers[0].min_legs_true == 0, StrataError::MissingZeroTier);
 
         let p = &mut ctx.accounts.product;
@@ -261,6 +266,9 @@ pub struct Product {
     pub vault_bump: u8,
 }
 impl Product {
+    // 8 disc + fixture_id 8 + nonce 4 + num_legs 1 + legs(MAX_LEGS*leg_size) + num_tiers 1 +
+    // tiers(MAX_TIERS*tier_size) + leg_results(MAX_LEGS*1) + status 1 + closes_at 8 +
+    // settle_deadline 8 + total_stake 8 + final_payout_bps 2 + bump 1 + vault_bump 1
     const LEG_SIZE: usize = 4 + 4 + 1 + 1 + 4 + 1;
     const TIER_SIZE: usize = 1 + 2;
     pub const SPACE: usize = 8 + 8 + 4 + 1 + (Self::LEG_SIZE * MAX_LEGS) + 1
