@@ -95,6 +95,59 @@ pub mod strata {
         p.total_stake = p.total_stake.checked_add(amount).ok_or(StrataError::Overflow)?;
         Ok(())
     }
+
+    /// Permissionless. Caller supplies only proof material; the program constructs the
+    /// TraderPredicate from Product.legs[leg_index] and binds the proof to this fixture.
+    pub fn settle_leg(
+        ctx: Context<SettleLeg>,
+        leg_index: u8,
+        ts: i64,
+        fixture_summary: ScoresBatchSummary,
+        fixture_proof: Vec<ProofNode>,
+        main_tree_proof: Vec<ProofNode>,
+        stat_a: StatTerm,
+        stat_b: Option<StatTerm>,
+    ) -> Result<()> {
+        let p = &ctx.accounts.product;
+        require!(p.status == ProductStatus::Open, StrataError::ProductNotOpen);
+        require!(Clock::get()?.unix_timestamp >= p.closes_at, StrataError::TooEarlyToSettle);
+        let idx = leg_index as usize;
+        require!(idx < p.num_legs as usize, StrataError::BadLegIndex);
+        require!(p.leg_results[idx] == LegResult::Unsettled, StrataError::LegAlreadySettled);
+        require!(fixture_summary.fixture_id == p.fixture_id, StrataError::FixtureMismatch);
+
+        let leg = p.legs[idx];
+        require!(stat_a.stat_to_prove.key == leg.stat_key_a, StrataError::StatKeyMismatch);
+        let (op, stat_b_arg) = if leg.has_second_stat {
+            let sb = stat_b.ok_or(StrataError::MissingSecondStat)?;
+            require!(sb.stat_to_prove.key == leg.stat_key_b, StrataError::StatKeyMismatch);
+            (Some(leg.op), Some(sb))
+        } else {
+            (None, None)
+        };
+
+        let args = ValidateStatArgs {
+            ts,
+            fixture_summary,
+            fixture_proof,
+            main_tree_proof,
+            predicate: TraderPredicate { threshold: leg.threshold, comparison: leg.comparison },
+            stat_a,
+            stat_b: stat_b_arg,
+            op,
+        };
+
+        let won = cpi_validate_stat(
+            &ctx.accounts.txoracle_program.to_account_info(),
+            &ctx.accounts.daily_scores_merkle_roots.to_account_info(),
+            args,
+        )?;
+
+        let p = &mut ctx.accounts.product;
+        p.leg_results[idx] = if won { LegResult::True } else { LegResult::False };
+        emit!(LegSettled { product: p.key(), leg_index, won });
+        Ok(())
+    }
 }
 
 // ---------- state ----------
@@ -216,6 +269,27 @@ pub struct Deposit<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct SettleLeg<'info> {
+    #[account(mut, seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump)]
+    pub product: Account<'info, Product>,
+    /// CHECK: must be the TxLINE txoracle program
+    #[account(address = TXORACLE_ID)]
+    pub txoracle_program: UncheckedAccount<'info>,
+    /// CHECK: daily_scores roots PDA; txoracle validates its discriminator+owner internally
+    #[account(owner = TXORACLE_ID)]
+    pub daily_scores_merkle_roots: UncheckedAccount<'info>,
+}
+
+// ---------- events ----------
+
+#[event]
+pub struct LegSettled {
+    pub product: Pubkey,
+    pub leg_index: u8,
+    pub won: bool,
+}
+
 // ---------- errors ----------
 
 #[error_code]
@@ -229,5 +303,11 @@ pub enum StrataError {
     #[msg("product not open")] ProductNotOpen,
     #[msg("product has closed for deposits")] ProductClosed,
     #[msg("amount must be > 0")] ZeroAmount,
+    #[msg("too early to settle, wait for closes_at")] TooEarlyToSettle,
+    #[msg("bad leg index")] BadLegIndex,
+    #[msg("leg already settled")] LegAlreadySettled,
+    #[msg("fixture id mismatch")] FixtureMismatch,
+    #[msg("stat key mismatch")] StatKeyMismatch,
+    #[msg("leg requires a second stat term")] MissingSecondStat,
     #[msg("overflow")] Overflow,
 }
