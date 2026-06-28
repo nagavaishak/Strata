@@ -1,10 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program, BN } from "@coral-xyz/anchor";
 import { Strata } from "../target/types/strata";
+import { MockTxoracle } from "../target/types/mock_txoracle";
+import { Keypair, SystemProgram } from "@solana/web3.js";
 import { assert } from "chai";
 
 describe("strata", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.AnchorProvider.env();
   const program = anchor.workspace.Strata as Program<Strata>;
 
   const fixtureId = new BN(123456);
@@ -76,5 +79,151 @@ describe("strata", () => {
       threw = true;
     }
     assert.isTrue(threw, "expected non-monotonic tier table to be rejected");
+  });
+
+  describe("full lifecycle against mock-txoracle", () => {
+    const mockProgram = anchor.workspace.MockTxoracle as Program<MockTxoracle>;
+    const [configPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("config")],
+      program.programId
+    );
+
+    const lifecycleFixtureId = new BN(777);
+    const lifecycleNonce = 9;
+    const [lifecycleProductPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("product"),
+        lifecycleFixtureId.toArrayLike(Buffer, "le", 8),
+        new anchor.BN(lifecycleNonce).toArrayLike(Buffer, "le", 4),
+      ],
+      program.programId
+    );
+    const [lifecycleVaultPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), lifecycleProductPda.toBuffer()],
+      program.programId
+    );
+    const user = Keypair.generate();
+    const dailyScoresRoots = Keypair.generate();
+    const [positionPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("pos"), lifecycleProductPda.toBuffer(), user.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const zeroRoot = new Array(32).fill(0);
+    const emptyStatTerm = (key: number, value: number) => ({
+      statToProve: { key, value, period: 0 },
+      eventStatRoot: zeroRoot,
+      statProof: [],
+    });
+
+    it("sets up config pointing at the mock oracle and a fake daily_scores account", async () => {
+      await program.methods
+        .initializeConfig(mockProgram.programId)
+        .accounts({ config: configPda, authority: provider.wallet.publicKey } as any)
+        .rpc();
+
+      // Fund with the rent-exempt minimum first — a zero-lamport account is garbage
+      // collected at the end of the transaction, which would silently undo the assign.
+      const rentExempt = await provider.connection.getMinimumBalanceForRentExemption(0);
+      const assignTx = new anchor.web3.Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: provider.wallet.publicKey,
+          toPubkey: dailyScoresRoots.publicKey,
+          lamports: rentExempt,
+        }),
+        SystemProgram.assign({
+          accountPubkey: dailyScoresRoots.publicKey,
+          programId: mockProgram.programId,
+        })
+      );
+      await provider.sendAndConfirm(assignTx, [dailyScoresRoots]);
+
+      const info = await provider.connection.getAccountInfo(dailyScoresRoots.publicKey);
+      assert.isNotNull(info, "daily_scores_merkle_roots account should exist after assign");
+      assert.equal(info!.owner.toBase58(), mockProgram.programId.toBase58(), "assign should have set owner to mock program");
+
+      const config = await program.account.config.fetch(configPda);
+      assert.equal(config.txoracleProgramId.toBase58(), mockProgram.programId.toBase58());
+    });
+
+    it("runs create_product -> deposit -> settle_leg -> finalize_product -> claim end to end", async () => {
+      // Needs to be in the future at create/deposit time (deposit requires now < closesAt)
+      // but elapsed by the time settle_leg runs (settle_leg requires now >= closesAt).
+      const closesAt = new BN(Math.floor(Date.now() / 1000) + 3);
+      const settleDeadline = new BN(Math.floor(Date.now() / 1000) + 600);
+      const legs = [
+        {
+          statKeyA: 1001,
+          statKeyB: 0,
+          hasSecondStat: false,
+          op: { add: {} },
+          threshold: 2,
+          comparison: { greaterThan: {} },
+        },
+      ];
+      const tiers = [
+        { minLegsTrue: 0, payoutBps: 0 },
+        { minLegsTrue: 1, payoutBps: 10000 },
+      ];
+
+      await program.methods
+        .createProduct(lifecycleFixtureId, lifecycleNonce, legs as any, tiers as any, closesAt, settleDeadline)
+        .rpc();
+
+      await provider.connection.confirmTransaction(
+        await provider.connection.requestAirdrop(user.publicKey, anchor.web3.LAMPORTS_PER_SOL)
+      );
+
+      const stake = new BN(anchor.web3.LAMPORTS_PER_SOL / 10);
+      await program.methods
+        .deposit(stake)
+        .accounts({ product: lifecycleProductPda, vault: lifecycleVaultPda, position: positionPda, user: user.publicKey } as any)
+        .signers([user])
+        .rpc();
+
+      // Wait for closesAt to elapse — settle_leg requires now >= closesAt.
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+
+      // Leg: statKeyA=1001, threshold=2, GreaterThan. Supply value=5 -> 5 > 2 -> true.
+      await program.methods
+        .settleLeg(
+          0,
+          new BN(Math.floor(Date.now() / 1000)),
+          { fixtureId: lifecycleFixtureId, updateStats: { updateCount: 1, minTimestamp: new BN(0), maxTimestamp: new BN(0) }, eventsSubTreeRoot: zeroRoot } as any,
+          [],
+          [],
+          emptyStatTerm(1001, 5) as any,
+          null
+        )
+        .accounts({
+          product: lifecycleProductPda,
+          config: configPda,
+          txoracleProgram: mockProgram.programId,
+          dailyScoresMerkleRoots: dailyScoresRoots.publicKey,
+        } as any)
+        .rpc();
+
+      const settledProduct = await program.account.product.fetch(lifecycleProductPda);
+      assert.deepEqual(settledProduct.legResults[0], { true: {} });
+
+      await program.methods
+        .finalizeProduct()
+        .accounts({ product: lifecycleProductPda } as any)
+        .rpc();
+
+      const finalized = await program.account.product.fetch(lifecycleProductPda);
+      assert.equal(finalized.finalPayoutBps, 10000); // 1/1 legs true -> top tier -> 100%
+
+      const balanceBefore = await provider.connection.getBalance(user.publicKey);
+      await program.methods
+        .claim()
+        .accounts({ product: lifecycleProductPda, vault: lifecycleVaultPda, position: positionPda, user: user.publicKey } as any)
+        .signers([user])
+        .rpc();
+      const balanceAfter = await provider.connection.getBalance(user.publicKey);
+
+      // 100% payout of the staked amount should come back (minus tx fee).
+      assert.isAbove(balanceAfter - balanceBefore, stake.toNumber() - 10_000);
+    });
   });
 });

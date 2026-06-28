@@ -7,6 +7,7 @@ skip-lint = false
 
 [programs.localnet]
 strata = "37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs"
+mock_txoracle = "FdPN4osW8F7r4vRqW9N6A9ch1yXPJ1c9iSoJcnDyVDRn"
 
 [programs.devnet]
 strata = "37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs"
