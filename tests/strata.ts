@@ -41,14 +41,18 @@ describe("strata", () => {
       { minLegsTrue: 1, payoutBps: 10000 },
     ];
 
+    const maxCapacity = new BN(anchor.web3.LAMPORTS_PER_SOL);
     await program.methods
-      .createProduct(fixtureId, nonce, legs as any, tiers as any, closesAt, settleDeadline)
+      .createProduct(fixtureId, nonce, legs as any, tiers as any, closesAt, settleDeadline, maxCapacity)
       .rpc();
 
     const product = await program.account.product.fetch(productPda);
     assert.equal(product.numLegs, 1);
     assert.equal(product.numTiers, 2);
     assert.equal(product.status.open !== undefined, true);
+    // top tier is 10000bps (100%) on maxCapacity -> collateral_locked == maxCapacity
+    assert.equal(product.collateralLocked.toString(), maxCapacity.toString());
+    assert.equal(product.writer.toBase58(), provider.wallet.publicKey.toBase58());
   });
 
   it("rejects a non-monotonic tier table", async () => {
@@ -73,7 +77,7 @@ describe("strata", () => {
     let threw = false;
     try {
       await program.methods
-        .createProduct(badFixtureId, 2, legs as any, badTiers as any, closesAt, settleDeadline)
+        .createProduct(badFixtureId, 2, legs as any, badTiers as any, closesAt, settleDeadline, new BN(1))
         .rpc();
     } catch (e) {
       threw = true;
@@ -161,20 +165,31 @@ describe("strata", () => {
           comparison: { greaterThan: {} },
         },
       ];
+      // Top tier pays 2.5x — real upside, funded by the writer's posted collateral.
+      // Previously payout was capped at returning a buyer's own stake; this proves
+      // settle_leg/claim now actually deliver more than 100% when warranted.
       const tiers = [
         { minLegsTrue: 0, payoutBps: 0 },
-        { minLegsTrue: 1, payoutBps: 10000 },
+        { minLegsTrue: 1, payoutBps: 25000 },
       ];
+      const stake = new BN(anchor.web3.LAMPORTS_PER_SOL / 10);
+      const maxCapacity = stake; // exactly the capacity we expect to sell, for a tight check
 
+      const writerBalanceBeforeCreate = await provider.connection.getBalance(provider.wallet.publicKey);
       await program.methods
-        .createProduct(lifecycleFixtureId, lifecycleNonce, legs as any, tiers as any, closesAt, settleDeadline)
+        .createProduct(lifecycleFixtureId, lifecycleNonce, legs as any, tiers as any, closesAt, settleDeadline, maxCapacity)
         .rpc();
+      const writerBalanceAfterCreate = await provider.connection.getBalance(provider.wallet.publicKey);
+
+      // Writer should have posted collateral = maxCapacity * 25000/10000 = 2.5x maxCapacity.
+      const expectedCollateral = maxCapacity.muln(25000).divn(10000);
+      const writerSpent = writerBalanceBeforeCreate - writerBalanceAfterCreate;
+      assert.isAtLeast(writerSpent, expectedCollateral.toNumber(), "writer should have posted collateral at create_product");
 
       await provider.connection.confirmTransaction(
         await provider.connection.requestAirdrop(user.publicKey, anchor.web3.LAMPORTS_PER_SOL)
       );
 
-      const stake = new BN(anchor.web3.LAMPORTS_PER_SOL / 10);
       await program.methods
         .deposit(stake)
         .accounts({ product: lifecycleProductPda, vault: lifecycleVaultPda, position: positionPda, user: user.publicKey } as any)
@@ -215,7 +230,7 @@ describe("strata", () => {
         .rpc();
 
       const finalized = await program.account.product.fetch(lifecycleProductPda);
-      assert.equal(finalized.finalPayoutBps, 10000); // 1/1 legs true -> top tier -> 100%
+      assert.equal(finalized.finalPayoutBps, 25000); // 1/1 legs true -> top tier -> 2.5x
 
       const balanceBefore = await provider.connection.getBalance(user.publicKey);
       await program.methods
@@ -225,8 +240,87 @@ describe("strata", () => {
         .rpc();
       const balanceAfter = await provider.connection.getBalance(user.publicKey);
 
-      // 100% payout of the staked amount should come back (minus tx fee).
-      assert.isAbove(balanceAfter - balanceBefore, stake.toNumber() - 10_000);
+      // Real upside: buyer gets 2.5x their stake, not just their own money back. This is
+      // the actual fix — funded by the writer's collateral, not recycled from other buyers.
+      const expectedPayout = stake.muln(25000).divn(10000);
+      assert.isAbove(balanceAfter - balanceBefore, expectedPayout.toNumber() - 10_000);
+      assert.isAbove(balanceAfter - balanceBefore, stake.toNumber(), "payout should exceed the buyer's own stake");
+
+      // Writer reclaims the safe surplus after settlement — proves the solvency math holds
+      // in practice, not just on paper. capacity was fully sold and top tier hit, so surplus
+      // should equal exactly total_stake (the equality case in the comment above the handler).
+      const writerBalanceBeforeWithdraw = await provider.connection.getBalance(provider.wallet.publicKey);
+      await program.methods
+        .withdrawWriterSurplus()
+        .accounts({ product: lifecycleProductPda, vault: lifecycleVaultPda, writer: provider.wallet.publicKey } as any)
+        .rpc();
+      const writerBalanceAfterWithdraw = await provider.connection.getBalance(provider.wallet.publicKey);
+      const writerGain = writerBalanceAfterWithdraw - writerBalanceBeforeWithdraw;
+      assert.isAbove(writerGain, stake.toNumber() - 10_000, "writer surplus should be ~= total_stake in the fully-sold, top-tier-hit case");
+
+      // Vault should be fully drained now (collateral + premiums all accounted for) —
+      // proves no funds are stuck and nothing was over- or under-paid.
+      const vaultBalance = await provider.connection.getBalance(lifecycleVaultPda);
+      const rentExemptVault = await provider.connection.getMinimumBalanceForRentExemption(9); // Vault::SPACE = 8 disc + 1 bump
+      assert.equal(vaultBalance, rentExemptVault, "vault should hold only its rent-exempt minimum after writer withdrawal");
+    });
+
+    it("rejects a deposit that would exceed max_capacity", async () => {
+      const capFixtureId = new BN(779);
+      const capNonce = 11;
+      const [capProductPda] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("product"),
+          capFixtureId.toArrayLike(Buffer, "le", 8),
+          new anchor.BN(capNonce).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+      const [capVaultPda] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("vault"), capProductPda.toBuffer()],
+        program.programId
+      );
+      const capUser = Keypair.generate();
+      const [capPositionPda] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("pos"), capProductPda.toBuffer(), capUser.publicKey.toBuffer()],
+        program.programId
+      );
+
+      const closesAt = new BN(Math.floor(Date.now() / 1000) + 60);
+      const settleDeadline = new BN(Math.floor(Date.now() / 1000) + 600);
+      const legs = [
+        { statKeyA: 1001, statKeyB: 0, hasSecondStat: false, op: { add: {} }, threshold: 2, comparison: { greaterThan: {} } },
+      ];
+      const tiers = [
+        { minLegsTrue: 0, payoutBps: 0 },
+        { minLegsTrue: 1, payoutBps: 10000 },
+      ];
+      const maxCapacity = new BN(anchor.web3.LAMPORTS_PER_SOL / 100); // tiny capacity, easy to exceed
+
+      await program.methods
+        .createProduct(capFixtureId, capNonce, legs as any, tiers as any, closesAt, settleDeadline, maxCapacity)
+        .accounts({ product: capProductPda } as any)
+        .rpc();
+
+      await provider.connection.confirmTransaction(
+        await provider.connection.requestAirdrop(capUser.publicKey, anchor.web3.LAMPORTS_PER_SOL)
+      );
+
+      let threw = false;
+      let code = "";
+      try {
+        await program.methods
+          .deposit(maxCapacity.addn(1)) // one lamport over capacity
+          .accounts({ product: capProductPda, vault: capVaultPda, position: capPositionPda, user: capUser.publicKey } as any)
+          .signers([capUser])
+          .rpc();
+      } catch (e: any) {
+        threw = true;
+        code = e?.error?.errorCode?.code ?? "";
+      }
+
+      assert.isTrue(threw, "expected a deposit over max_capacity to be rejected");
+      assert.equal(code, "CapacityExceeded");
     });
 
     it("rejects settle_leg with a batch that predates closes_at (anti latency-sniping)", async () => {
@@ -259,7 +353,7 @@ describe("strata", () => {
       ];
 
       await program.methods
-        .createProduct(snipeFixtureId, snipeNonce, legs as any, tiers as any, closesAt, settleDeadline)
+        .createProduct(snipeFixtureId, snipeNonce, legs as any, tiers as any, closesAt, settleDeadline, new BN(anchor.web3.LAMPORTS_PER_SOL / 10))
         .accounts({ product: snipeProductPda } as any)
         .rpc();
 
