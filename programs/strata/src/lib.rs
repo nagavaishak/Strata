@@ -10,18 +10,32 @@ use txoracle_cpi::*;
 
 declare_id!("37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs");
 
-// devnet TxLINE txoracle program (CPI target)
-pub const TXORACLE_ID: Pubkey = anchor_lang::prelude::pubkey!("6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J");
-
 pub const MAX_LEGS: usize = 5;
 pub const MAX_TIERS: usize = 6;
 pub const PRODUCT_SEED: &[u8] = b"product";
 pub const VAULT_SEED: &[u8] = b"vault";
 pub const POS_SEED: &[u8] = b"pos";
+pub const CONFIG_SEED: &[u8] = b"config";
 
 #[program]
 pub mod strata {
     use super::*;
+
+    /// One-time setup. Stores which program `settle_leg` CPIs into, so a future TxLINE
+    /// program migration (e.g. validate_stat_v2 under a new program id) doesn't require
+    /// redeploying Strata — just calling update_config again.
+    pub fn initialize_config(ctx: Context<InitializeConfig>, txoracle_program_id: Pubkey) -> Result<()> {
+        let c = &mut ctx.accounts.config;
+        c.authority = ctx.accounts.authority.key();
+        c.txoracle_program_id = txoracle_program_id;
+        c.bump = ctx.bumps.config;
+        Ok(())
+    }
+
+    pub fn update_config(ctx: Context<UpdateConfig>, txoracle_program_id: Pubkey) -> Result<()> {
+        ctx.accounts.config.txoracle_program_id = txoracle_program_id;
+        Ok(())
+    }
 
     pub fn create_product(
         ctx: Context<CreateProduct>,
@@ -211,6 +225,16 @@ pub mod strata {
 
 // ---------- state ----------
 
+#[account]
+pub struct Config {
+    pub authority: Pubkey,
+    pub txoracle_program_id: Pubkey,
+    pub bump: u8,
+}
+impl Config {
+    pub const SPACE: usize = 8 + 32 + 32 + 1;
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
 pub struct Leg {
     pub stat_key_a: u32,
@@ -298,6 +322,28 @@ impl Position {
 // ---------- contexts ----------
 
 #[derive(Accounts)]
+pub struct InitializeConfig<'info> {
+    #[account(
+        init, payer = authority, space = Config::SPACE,
+        seeds = [CONFIG_SEED], bump
+    )]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateConfig<'info> {
+    #[account(
+        mut, seeds = [CONFIG_SEED], bump = config.bump,
+        has_one = authority @ StrataError::Unauthorized
+    )]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
 #[instruction(fixture_id: i64, nonce: u32)]
 pub struct CreateProduct<'info> {
     #[account(
@@ -335,11 +381,13 @@ pub struct Deposit<'info> {
 pub struct SettleLeg<'info> {
     #[account(mut, seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump)]
     pub product: Account<'info, Product>,
-    /// CHECK: must be the TxLINE txoracle program
-    #[account(address = TXORACLE_ID)]
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    /// CHECK: must match config.txoracle_program_id
+    #[account(address = config.txoracle_program_id)]
     pub txoracle_program: UncheckedAccount<'info>,
-    /// CHECK: daily_scores roots PDA; txoracle validates its discriminator+owner internally
-    #[account(owner = TXORACLE_ID)]
+    /// CHECK: daily_scores roots PDA; the oracle program validates its discriminator+owner internally
+    #[account(owner = config.txoracle_program_id)]
     pub daily_scores_merkle_roots: UncheckedAccount<'info>,
 }
 
