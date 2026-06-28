@@ -19,7 +19,16 @@ anchor deploy --provider.cluster devnet --program-name strata
 
 ## Config
 
-`settle_leg`'s CPI target is set via the on-chain `Config` account, not hardcoded —
-call `initialize_config(txoracle_program_id)` once after deploying, pointing at
-TxLINE's devnet `txoracle` program: `6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J`.
-Not yet done on this deployment — still pending.
+`settle_leg`'s CPI target is set via the on-chain `Config` account, not hardcoded.
+Run once after deploying (safe to re-run — switches to `update_config` automatically
+if `Config` already exists):
+
+```bash
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+ANCHOR_WALLET=~/.config/solana/oracle-keypair.json \
+./node_modules/.bin/ts-node -P tsconfig.json scripts/init-config.ts
+```
+
+**Done on this deployment:** Config PDA `7GsKusMMgkYvkw5JhHzkBGkrxz4d7iNkEEEUycepXgkZ`,
+pointing at TxLINE's devnet `txoracle` program `6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J`.
+Verified directly on-chain: owner is the Strata program, 73 bytes (matches `Config::SPACE`).
