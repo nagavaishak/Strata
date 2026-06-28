@@ -90,14 +90,112 @@ async function main() {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}`, "X-Api-Token": apiToken },
   });
 
-  console.log(`Fetching stat-validation for fixture=${FIXTURE_ID} seq=${SEQ} statKey=${STAT_KEY}...`);
-  const res = await http.get("/api/scores/stat-validation", {
-    params: { fixtureId: FIXTURE_ID, seq: SEQ, statKey: STAT_KEY },
-  });
+  const discover = process.argv.includes("--discover");
+  let data: any;
 
-  console.log(JSON.stringify(res.data, null, 2));
-  fs.writeFileSync(__dirname + "/../tests/fixtures/real-devnet-proof.json", JSON.stringify(res.data, null, 2));
+  if (!discover) {
+    console.log(`Fetching stat-validation for fixture=${FIXTURE_ID} seq=${SEQ} statKey=${STAT_KEY}...`);
+    const res = await http.get("/api/scores/stat-validation", {
+      params: { fixtureId: FIXTURE_ID, seq: SEQ, statKey: STAT_KEY },
+    });
+    data = res.data;
+  } else {
+    // The documented example (FIXTURE_ID/SEQ/STAT_KEY above) is static historical data —
+    // its minTimestamp never changes between calls. That's fine for a one-off smoke test,
+    // but incompatible with settle_leg's anti-sniping check in a real deposit-then-settle
+    // flow, since deposits require closes_at in the future while settling requires the
+    // batch to postdate it — a frozen-in-the-past batch can never satisfy both. Find a
+    // genuinely live fixture instead, the way proofkick's tracer does: scan recent score
+    // updates (accounting for TxLINE's ~60s publish delay) and use whatever's actually
+    // active right now.
+    const pinFixtureArg = process.argv.find((a) => a.startsWith("--pinFixture="));
+    const pinStatKeyArg = process.argv.find((a) => a.startsWith("--pinStatKey="));
+    const pinFixture = pinFixtureArg ? Number(pinFixtureArg.split("=")[1]) : undefined;
+    const pinStatKey = pinStatKeyArg ? Number(pinStatKeyArg.split("=")[1]) : undefined;
+
+    if (pinFixture != null) {
+      console.log(`Fetching the freshest available batch for pinned fixture=${pinFixture} statKey=${pinStatKey}...`);
+      data = await fetchLatestForFixture(http, pinFixture, pinStatKey!);
+      if (!data) throw new Error(`could not find a fresher batch for pinned fixture=${pinFixture} statKey=${pinStatKey}`);
+    } else {
+      console.log("Discovering a live fixture from recent score updates...");
+      data = await discoverLiveValidation(http);
+      if (!data) throw new Error("could not discover a live fixture/seq/statKey with a valid proof");
+    }
+  }
+
+  console.log(JSON.stringify(data, null, 2));
+  fs.writeFileSync(__dirname + "/../tests/fixtures/real-devnet-proof.json", JSON.stringify(data, null, 2));
   console.log("\nSaved to tests/fixtures/real-devnet-proof.json");
+}
+
+// Used for the second probe in a deposit-then-settle flow: must return data for the SAME
+// fixture/stat the product was created with (settle_leg checks fixture_id and stat key
+// match), just whatever the freshest available seq is for that pair — not a fresh
+// discovery, which could surface an entirely different live fixture.
+async function fetchLatestForFixture(http: any, fixtureId: number, statKey: number): Promise<any | null> {
+  for (let back = 1; back <= 12; back++) {
+    const t = new Date(Date.now() - back * 5 * 60 * 1000);
+    const epochDay = Math.floor(t.getTime() / 86400000);
+    const hour = t.getUTCHours();
+    const interval = Math.floor(t.getUTCMinutes() / 5);
+
+    let updates: any;
+    try {
+      updates = (await http.get(`/api/scores/updates/${epochDay}/${hour}/${interval}`)).data;
+    } catch (e: any) {
+      console.log(`  updates ${epochDay}/${hour}/${interval}: ${e.response?.status ?? e.message}`);
+      continue;
+    }
+    const list: any[] = Array.isArray(updates) ? updates : updates?.updates ?? updates?.data ?? [];
+    const match = list.find((u) => (u.fixtureId ?? u.fixture_id ?? u.fixtureID) === fixtureId);
+    if (!match) continue;
+
+    const seq = match.seq ?? match.sequence ?? match.seqNo;
+    try {
+      const res = await http.get("/api/scores/stat-validation", { params: { fixtureId, seq, statKey } });
+      console.log(`  found fresher batch: fixture=${fixtureId} seq=${seq} statKey=${statKey}`);
+      return res.data;
+    } catch (e: any) {
+      console.log(`  stat-validation failed for fixture=${fixtureId} seq=${seq}: ${e.response?.status ?? e.message}`);
+    }
+  }
+  return null;
+}
+
+async function discoverLiveValidation(http: any): Promise<any | null> {
+  for (let back = 1; back <= 12; back++) {
+    const t = new Date(Date.now() - back * 5 * 60 * 1000);
+    const epochDay = Math.floor(t.getTime() / 86400000);
+    const hour = t.getUTCHours();
+    const interval = Math.floor(t.getUTCMinutes() / 5);
+
+    let updates: any;
+    try {
+      updates = (await http.get(`/api/scores/updates/${epochDay}/${hour}/${interval}`)).data;
+    } catch (e: any) {
+      console.log(`  updates ${epochDay}/${hour}/${interval}: ${e.response?.status ?? e.message}`);
+      continue;
+    }
+    const list: any[] = Array.isArray(updates) ? updates : updates?.updates ?? updates?.data ?? [];
+    console.log(`  updates ${epochDay}/${hour}/${interval}: ${list.length} entries`);
+    if (!list.length) continue;
+
+    for (const u of list.slice(0, 5)) {
+      const fixtureId = u.fixtureId ?? u.fixture_id ?? u.fixtureID;
+      const seq = u.seq ?? u.sequence ?? u.seqNo;
+      const statKey = u.statKey ?? u.key ?? u.stat_key ?? STAT_KEY;
+      if (fixtureId == null || seq == null) continue;
+      try {
+        const res = await http.get("/api/scores/stat-validation", { params: { fixtureId, seq, statKey } });
+        console.log(`  found live proof: fixture=${fixtureId} seq=${seq} statKey=${statKey}`);
+        return res.data;
+      } catch (e: any) {
+        console.log(`  stat-validation failed for fixture=${fixtureId} seq=${seq}: ${e.response?.status ?? e.message}`);
+      }
+    }
+  }
+  return null;
 }
 
 main().catch((e) => {
