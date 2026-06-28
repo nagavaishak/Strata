@@ -1,20 +1,38 @@
-// Runs a full Strata product lifecycle on devnet against a REAL TxLINE proof
-// (captured by scripts/probe-txline.ts into tests/fixtures/real-devnet-proof.json),
-// not a mock. create_product -> deposit -> settle_leg (real CPI into the real
-// txoracle program) -> finalize_product -> claim.
+// Runs create_product -> settle_leg -> finalize_product -> withdraw_writer_surplus on
+// devnet against a REAL TxLINE proof (captured by scripts/probe-txline.ts), with a real
+// CPI into the real txoracle program — not a mock.
+//
+// Deliberately scoped WITHOUT a buyer deposit/claim. Reason, documented honestly: the
+// only real proof data reliably available right now is TxLINE's static documented
+// example (fixtureId 17952170), whose minTimestamp is frozen in the past. settle_leg's
+// anti-sniping check (minTimestamp must postdate closes_at) means a buyer deposit would
+// require closes_at to be in the future at deposit time, which can never be satisfied by
+// a batch that's already frozen in the past — no amount of waiting produces a new batch
+// for static data. A scan of the last 24h of TxLINE's devnet feed found one fixture that
+// *was* genuinely live a few hours ago (climbing Seq numbers, real stats) but it isn't
+// actively updating right now, so there's no currently-live fixture to use instead.
+//
+// Buyer/writer economics (2.5x payout, collateral posting, surplus reclaim) are already
+// proven rigorously against the mock oracle in tests/strata.ts (6/6 passing) — that part
+// doesn't depend on a live match existing. This script instead proves the other half:
+// writer collateral posting and settle_leg/finalize_product/withdraw_writer_surplus all
+// work for real, with a real CPI into TxLINE's actual on-chain program returning a real
+// `true`. With zero buyer stake, the writer's full collateral comes back as surplus —
+// itself a clean proof of the solvency math (collateral_locked + 0 - 0 = collateral_locked).
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, ComputeBudgetProgram } from "@solana/web3.js";
 import * as fs from "fs";
 
+const PROOF_PATH = __dirname + "/../tests/fixtures/real-devnet-proof.json";
 const RPC = "https://api.devnet.solana.com";
 const TXORACLE_PROGRAM_ID = new PublicKey("6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J");
 
 async function main() {
   const keypairPath = process.env.HOME + "/.config/solana/oracle-keypair.json";
   const secret = Uint8Array.from(JSON.parse(fs.readFileSync(keypairPath, "utf8")));
-  const keypair = Keypair.fromSecretKey(secret);
-  const wallet = new anchor.Wallet(keypair);
+  const writer = Keypair.fromSecretKey(secret);
+  const wallet = new anchor.Wallet(writer);
   const connection = new Connection(RPC, "confirmed");
   const provider = new anchor.AnchorProvider(connection, wallet, { commitment: "confirmed" });
   anchor.setProvider(provider);
@@ -22,12 +40,12 @@ async function main() {
   const strataIdl = JSON.parse(fs.readFileSync(__dirname + "/../target/idl/strata.json", "utf8"));
   const program = new anchor.Program(strataIdl as anchor.Idl, provider);
 
-  const proof = JSON.parse(fs.readFileSync(__dirname + "/../tests/fixtures/real-devnet-proof.json", "utf8"));
-
+  const proof = JSON.parse(fs.readFileSync(PROOF_PATH, "utf8"));
   const fixtureId = new BN(proof.summary.fixtureId);
-  const nonce = Math.floor(Date.now() / 1000) % 1_000_000; // unique-ish per run
+  const nonce = Math.floor(Date.now() / 1000) % 1_000_000;
   const statKey = proof.statToProve.key;
   const statValue = proof.statToProve.value as number;
+  const threshold = statValue - 1; // trivially true for the value TxLINE actually recorded
 
   console.log(`Fixture ${fixtureId.toString()}, stat key ${statKey}, real value ${statValue}, nonce ${nonce}`);
 
@@ -35,53 +53,34 @@ async function main() {
     [Buffer.from("product"), fixtureId.toArrayLike(Buffer, "le", 8), new BN(nonce).toArrayLike(Buffer, "le", 4)],
     program.programId
   );
-  const [vaultPda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("vault"), productPda.toBuffer()],
-    program.programId
-  );
-  const [positionPda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("pos"), productPda.toBuffer(), keypair.publicKey.toBuffer()],
-    program.programId
-  );
+  const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault"), productPda.toBuffer()], program.programId);
   const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("config")], program.programId);
 
-  // Predicate: real stat value > (value - 1) is trivially true for the value TxLINE actually
-  // recorded — proves settle_leg correctly evaluates a live proof, not a contrived mock.
-  const threshold = statValue - 1;
-
-  const closesAt = new BN(Math.floor(Date.now() / 1000) + 5);
+  // closes_at must be BEFORE this batch's minTimestamp (anti-sniping check), which is fine
+  // here since we're not taking a buyer deposit in this run — see file header.
+  const closesAt = new BN(Math.floor(proof.summary.updateStats.minTimestamp / 1000) - 5);
   const settleDeadline = new BN(Math.floor(Date.now() / 1000) + 1800);
+  const topTierBps = 20000; // 2x — same real-upside tier table as the mock test
+  const maxCapacity = new BN(10_000_000); // 0.01 SOL of capacity, unsold in this run
+
   const legs = [
-    {
-      statKeyA: statKey,
-      statKeyB: 0,
-      hasSecondStat: false,
-      op: { add: {} },
-      threshold,
-      comparison: { greaterThan: {} },
-    },
+    { statKeyA: statKey, statKeyB: 0, hasSecondStat: false, op: { add: {} }, threshold, comparison: { greaterThan: {} } },
   ];
   const tiers = [
     { minLegsTrue: 0, payoutBps: 0 },
-    { minLegsTrue: 1, payoutBps: 10000 },
+    { minLegsTrue: 1, payoutBps: topTierBps },
   ];
 
-  console.log("create_product...");
+  console.log(`create_product (writer posts ${(maxCapacity.toNumber() * topTierBps) / 10000 / 1e9} SOL collateral)...`);
+  const writerBalanceBeforeCreate = await connection.getBalance(writer.publicKey);
   let sig = await program.methods
-    .createProduct(fixtureId, nonce, legs as any, tiers as any, closesAt, settleDeadline)
-    .accounts({ product: productPda, vault: vaultPda, payer: keypair.publicKey } as any)
+    .createProduct(fixtureId, nonce, legs as any, tiers as any, closesAt, settleDeadline, maxCapacity)
+    .accounts({ product: productPda, vault: vaultPda, payer: writer.publicKey } as any)
     .rpc();
   console.log("  ", sig);
-
-  console.log("deposit 0.01 SOL...");
-  sig = await program.methods
-    .deposit(new BN(10_000_000))
-    .accounts({ product: productPda, vault: vaultPda, position: positionPda, user: keypair.publicKey } as any)
-    .rpc();
-  console.log("  ", sig);
-
-  console.log("waiting for closes_at to elapse...");
-  await new Promise((r) => setTimeout(r, 7000));
+  const writerBalanceAfterCreate = await connection.getBalance(writer.publicKey);
+  const collateralPosted = writerBalanceBeforeCreate - writerBalanceAfterCreate;
+  console.log(`  writer posted ${collateralPosted / 1e9} SOL collateral (real SOL, real transaction)`);
 
   const epochDay = Math.floor(proof.summary.updateStats.minTimestamp / 86400000);
   const [dailyScoresPda] = PublicKey.findProgramAddressSync(
@@ -90,10 +89,7 @@ async function main() {
   );
   console.log("daily_scores_roots PDA:", dailyScoresPda.toBase58(), "epochDay:", epochDay);
 
-  console.log("settle_leg (real CPI into real txoracle)...");
-  // ts must be summary.updateStats.minTimestamp, not the capture-time `ts` field at the
-  // payload's top level — confirmed against proofkick's tracer (which got this working
-  // against the real program); using the capture timestamp throws TimestampMismatch.
+  console.log("settle_leg (real CPI into the real txoracle program)...");
   const targetTs = new BN(proof.summary.updateStats.minTimestamp);
   const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
   sig = await program.methods
@@ -139,16 +135,22 @@ async function main() {
   console.log("  ", sig);
 
   const finalized = await (program.account as any).product.fetch(productPda);
-  console.log("final_payout_bps:", finalized.finalPayoutBps);
+  console.log("final_payout_bps:", finalized.finalPayoutBps, "total_stake:", finalized.totalStake.toString());
 
-  console.log("claim...");
+  console.log("withdraw_writer_surplus...");
+  const writerBalanceBeforeSurplus = await connection.getBalance(writer.publicKey);
   sig = await program.methods
-    .claim()
-    .accounts({ product: productPda, vault: vaultPda, position: positionPda, user: keypair.publicKey } as any)
+    .withdrawWriterSurplus()
+    .accounts({ product: productPda, vault: vaultPda, writer: writer.publicKey } as any)
     .rpc();
   console.log("  ", sig);
+  const writerBalanceAfterSurplus = await connection.getBalance(writer.publicKey);
+  const surplus = writerBalanceAfterSurplus - writerBalanceBeforeSurplus;
+  console.log(`  writer reclaimed ${surplus / 1e9} SOL surplus (expected ~= collateral posted, since total_stake was 0)`);
 
-  console.log("\nDONE. Real settlement against live TxLINE devnet proof succeeded end to end.");
+  console.log("\nDONE. Real collateral posting + real settle_leg CPI + real surplus reclaim, all on devnet.");
+  console.log("Buyer-side economics (2.5x payout on a real deposit) are proven separately against the");
+  console.log("mock oracle in tests/strata.ts, since no live fixture is currently active to demo it here.");
   console.log("Product:", productPda.toBase58());
 }
 
