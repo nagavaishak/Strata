@@ -185,11 +185,14 @@ describe("strata", () => {
       await new Promise((resolve) => setTimeout(resolve, 4000));
 
       // Leg: statKeyA=1001, threshold=2, GreaterThan. Supply value=5 -> 5 > 2 -> true.
+      // minTimestamp must postdate closesAt (in ms) — settle_leg now rejects batches that
+      // existed before deposits closed, to block latency-sniping off the live stream.
+      const batchMinTimestamp = new BN(closesAt.toNumber() + 1).muln(1000);
       await program.methods
         .settleLeg(
           0,
           new BN(Math.floor(Date.now() / 1000)),
-          { fixtureId: lifecycleFixtureId, updateStats: { updateCount: 1, minTimestamp: new BN(0), maxTimestamp: new BN(0) }, eventsSubTreeRoot: zeroRoot } as any,
+          { fixtureId: lifecycleFixtureId, updateStats: { updateCount: 1, minTimestamp: batchMinTimestamp, maxTimestamp: batchMinTimestamp }, eventsSubTreeRoot: zeroRoot } as any,
           [],
           [],
           emptyStatTerm(1001, 5) as any,
@@ -224,6 +227,79 @@ describe("strata", () => {
 
       // 100% payout of the staked amount should come back (minus tx fee).
       assert.isAbove(balanceAfter - balanceBefore, stake.toNumber() - 10_000);
+    });
+
+    it("rejects settle_leg with a batch that predates closes_at (anti latency-sniping)", async () => {
+      const snipeFixtureId = new BN(778);
+      const snipeNonce = 10;
+      const [snipeProductPda] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("product"),
+          snipeFixtureId.toArrayLike(Buffer, "le", 8),
+          new anchor.BN(snipeNonce).toArrayLike(Buffer, "le", 4),
+        ],
+        program.programId
+      );
+
+      const closesAt = new BN(Math.floor(Date.now() / 1000) + 3);
+      const settleDeadline = new BN(Math.floor(Date.now() / 1000) + 600);
+      const legs = [
+        {
+          statKeyA: 1001,
+          statKeyB: 0,
+          hasSecondStat: false,
+          op: { add: {} },
+          threshold: 2,
+          comparison: { greaterThan: {} },
+        },
+      ];
+      const tiers = [
+        { minLegsTrue: 0, payoutBps: 0 },
+        { minLegsTrue: 1, payoutBps: 10000 },
+      ];
+
+      await program.methods
+        .createProduct(snipeFixtureId, snipeNonce, legs as any, tiers as any, closesAt, settleDeadline)
+        .accounts({ product: snipeProductPda } as any)
+        .rpc();
+
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+
+      // Batch timestamp is BEFORE closesAt — simulates a user trying to settle against
+      // data that existed (on the live stream) before deposits even closed.
+      const staleBatchMinTimestamp = new BN(closesAt.toNumber() - 60).muln(1000);
+
+      let threw = false;
+      let code = "";
+      try {
+        await program.methods
+          .settleLeg(
+            0,
+            new BN(Math.floor(Date.now() / 1000)),
+            {
+              fixtureId: snipeFixtureId,
+              updateStats: { updateCount: 1, minTimestamp: staleBatchMinTimestamp, maxTimestamp: staleBatchMinTimestamp },
+              eventsSubTreeRoot: zeroRoot,
+            } as any,
+            [],
+            [],
+            emptyStatTerm(1001, 5) as any,
+            null
+          )
+          .accounts({
+            product: snipeProductPda,
+            config: configPda,
+            txoracleProgram: mockProgram.programId,
+            dailyScoresMerkleRoots: dailyScoresRoots.publicKey,
+          } as any)
+          .rpc();
+      } catch (e: any) {
+        threw = true;
+        code = e?.error?.errorCode?.code ?? "";
+      }
+
+      assert.isTrue(threw, "expected a stale batch to be rejected");
+      assert.equal(code, "BatchPredatesClose");
     });
   });
 });

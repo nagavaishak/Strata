@@ -134,6 +134,15 @@ pub mod strata {
         require!(idx < p.num_legs as usize, StrataError::BadLegIndex);
         require!(p.leg_results[idx] == LegResult::Unsettled, StrataError::LegAlreadySettled);
         require!(fixture_summary.fixture_id == p.fixture_id, StrataError::FixtureMismatch);
+        // Defends against latency-sniping: a user who watches the live (unprovable) stream
+        // and deposits right before closes_at, betting on something they already saw but
+        // that TxLINE hasn't sealed into a batch yet. closes_at is unix seconds; TxLINE
+        // timestamps are unix millis.
+        let closes_at_ms = p.closes_at.checked_mul(1000).ok_or(StrataError::Overflow)?;
+        require!(
+            fixture_summary.update_stats.min_timestamp > closes_at_ms,
+            StrataError::BatchPredatesClose
+        );
 
         let leg = p.legs[idx];
         require!(stat_a.stat_to_prove.key == leg.stat_key_a, StrataError::StatKeyMismatch);
@@ -453,6 +462,7 @@ pub enum StrataError {
     #[msg("bad leg index")] BadLegIndex,
     #[msg("leg already settled")] LegAlreadySettled,
     #[msg("fixture id mismatch")] FixtureMismatch,
+    #[msg("batch predates closes_at — can't settle on data that existed before deposits closed")] BatchPredatesClose,
     #[msg("stat key mismatch")] StatKeyMismatch,
     #[msg("leg requires a second stat term")] MissingSecondStat,
     #[msg("legs still pending and before settle_deadline")] LegsStillPending,
