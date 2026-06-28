@@ -37,21 +37,34 @@ Verified directly on-chain: owner is the Strata program, 73 bytes (matches `Conf
 
 Not a mock — `scripts/probe-txline.ts` subscribes (free tier), authenticates as a
 guest, and fetches a real `stat-validation` Merkle proof from TxLINE's devnet API.
-`scripts/real-settlement.ts` then runs the full lifecycle on devnet:
-`create_product` → `deposit` → `settle_leg` (real CPI into the real `txoracle`
-program, not the localnet mock) → `finalize_product` → `claim`.
+`scripts/real-settlement.ts` then runs `create_product` (writer posts real collateral) →
+`settle_leg` (real CPI into the real `txoracle` program, not the localnet mock) →
+`finalize_product` → `withdraw_writer_surplus`, all on devnet.
 
-**Product:** [`8BKXjPJATBAhubF4tDD5LR5Pj5B8PNGM7wEPrMSGcCJw`](https://explorer.solana.com/address/8BKXjPJATBAhubF4tDD5LR5Pj5B8PNGM7wEPrMSGcCJw?cluster=devnet)
-**settle_leg tx:** [`2QWSwWpqSpWmTJRxkNjiBytPTiA6umEbPTRDYCBzUNANZodwDnpVVeRRAUW6sZzT8Az273GcKW2rLGooUhZu872U`](https://explorer.solana.com/tx/2QWSwWpqSpWmTJRxkNjiBytPTiA6umEbPTRDYCBzUNANZodwDnpVVeRRAUW6sZzT8Az273GcKW2rLGooUhZu872U?cluster=devnet)
+**Product:** [`5nVjJJrdSw9E2VYF7xLJp1SFyw3nemVxkiwftZdV4q5Y`](https://explorer.solana.com/address/5nVjJJrdSw9E2VYF7xLJp1SFyw3nemVxkiwftZdV4q5Y?cluster=devnet)
+**settle_leg tx:** [`5w8drD6zKPohHZ49x9SnG787NZdfMAjCAhzR4d1bY7cj8dMkvXpcSxXDEmFiDNozcfsADfSRb7k2nWxMY7JXdCFo`](https://explorer.solana.com/tx/5w8drD6zKPohHZ49x9SnG787NZdfMAjCAhzR4d1bY7cj8dMkvXpcSxXDEmFiDNozcfsADfSRb7k2nWxMY7JXdCFo?cluster=devnet)
 
 Verified independently via `solana confirm -v`, not just trusting the script's own
 output: real `ValidateStat` CPI, `SUCCESS: Found valid on-chain root for interval 215`,
-`Predicate evaluated to: true`, program return data `0x01`. Payout resolved to 100%
-(1/1 legs true) and `claim` transferred it.
+`Predicate evaluated to: true`, program return data `0x01`.
 
-The captured proof (fixture `17952170`, seq `941`, stat key `1002`) is committed as
-our own golden vector at `tests/fixtures/real-devnet-proof.json`, so this exact
-settlement is reproducible without needing a live match in progress.
+**Scope note, stated plainly:** this run has no buyer deposit. settle_leg's anti-sniping
+check (the batch must postdate `closes_at`) means a buyer deposit needs `closes_at` in the
+future, but the only reliably available real proof — TxLINE's static documented example
+(fixture `17952170`, seq `941`, stat key `1002`) — is frozen historical data whose
+timestamp never advances. A 24h scan of TxLINE's live feed found one fixture that *was*
+genuinely live a few hours earlier (climbing seq numbers, real stats) but it isn't
+actively updating right now, so there's no currently-live fixture to demo the full buyer
+flow against either. Buyer-side economics (2.5x payout, real upside, surplus math) are
+proven separately and rigorously against the mock oracle in `tests/strata.ts` (6/6
+passing) — that doesn't depend on a live match existing. This script proves the other
+half for real: collateral posting, the CPI itself, and surplus reclaim, all with real SOL
+on devnet. `scripts/probe-txline.ts --discover` (with `--pinFixture`/`--pinStatKey` for
+re-fetching the same fixture's freshest batch) is ready to run the full buyer flow for
+real whenever TxLINE's simulation has an active match again.
+
+The captured proof is committed as our own golden vector at
+`tests/fixtures/real-devnet-proof.json`, so this exact settlement is reproducible.
 
 Re-run with:
 
