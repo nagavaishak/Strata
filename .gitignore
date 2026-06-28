@@ -6,3 +6,4 @@ node_modules
 test-ledger
 .yarn
 programs/strata/strata-keypair.json
+programs/mock-txoracle/mock-keypair.json
