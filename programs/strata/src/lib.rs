@@ -37,6 +37,11 @@ pub mod strata {
         Ok(())
     }
 
+    /// Creator becomes the product's writer/underwriter: they post collateral upfront
+    /// covering the worst-case payout obligation (max_capacity at the top tier's payout),
+    /// the same way an options writer or a parametric-insurance underwriter locks capital
+    /// before selling protection. This is what gives buyers real upside — previously
+    /// payout was capped at returning a buyer's own stake, because nothing backed more.
     pub fn create_product(
         ctx: Context<CreateProduct>,
         fixture_id: i64,
@@ -45,10 +50,12 @@ pub mod strata {
         tiers: Vec<Tier>,
         closes_at: i64,
         settle_deadline: i64,
+        max_capacity: u64,
     ) -> Result<()> {
         require!(!legs.is_empty() && legs.len() <= MAX_LEGS, StrataError::BadLegCount);
         require!(!tiers.is_empty() && tiers.len() <= MAX_TIERS, StrataError::BadTierCount);
         require!(settle_deadline > closes_at, StrataError::BadDeadline);
+        require!(max_capacity > 0, StrataError::ZeroAmount);
 
         // tiers must be sorted ascending by min_legs_true and payout strictly non-decreasing
         let mut last_min = -1i32;
@@ -62,6 +69,25 @@ pub mod strata {
         }
         // tier covering 0 legs true must exist so settlement always resolves
         require!(tiers[0].min_legs_true == 0, StrataError::MissingZeroTier);
+
+        // Worst case is the top tier (tiers are monotonic, so the last one is highest).
+        let top_tier_bps = tiers[tiers.len() - 1].payout_bps;
+        let collateral_required = (max_capacity as u128)
+            .checked_mul(top_tier_bps as u128).ok_or(StrataError::Overflow)?
+            .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
+
+        if collateral_required > 0 {
+            system_program::transfer(
+                CpiContext::new(
+                    ctx.accounts.system_program.to_account_info(),
+                    system_program::Transfer {
+                        from: ctx.accounts.payer.to_account_info(),
+                        to: ctx.accounts.vault.to_account_info(),
+                    },
+                ),
+                collateral_required,
+            )?;
+        }
 
         let p = &mut ctx.accounts.product;
         p.fixture_id = fixture_id;
@@ -82,6 +108,10 @@ pub mod strata {
         p.settle_deadline = settle_deadline;
         p.total_stake = 0;
         p.final_payout_bps = 0;
+        p.writer = ctx.accounts.payer.key();
+        p.max_capacity = max_capacity;
+        p.collateral_locked = collateral_required;
+        p.writer_withdrawn = false;
         p.bump = ctx.bumps.product;
         p.vault_bump = ctx.bumps.vault;
         Ok(())
@@ -91,6 +121,8 @@ pub mod strata {
         require!(ctx.accounts.product.status == ProductStatus::Open, StrataError::ProductNotOpen);
         require!(Clock::get()?.unix_timestamp < ctx.accounts.product.closes_at, StrataError::ProductClosed);
         require!(amount > 0, StrataError::ZeroAmount);
+        let new_total = ctx.accounts.product.total_stake.checked_add(amount).ok_or(StrataError::Overflow)?;
+        require!(new_total <= ctx.accounts.product.max_capacity, StrataError::CapacityExceeded);
 
         system_program::transfer(
             CpiContext::new(
@@ -110,8 +142,7 @@ pub mod strata {
         pos.claimed = false;
         pos.bump = ctx.bumps.position;
 
-        let p = &mut ctx.accounts.product;
-        p.total_stake = p.total_stake.checked_add(amount).ok_or(StrataError::Overflow)?;
+        ctx.accounts.product.total_stake = new_total;
         Ok(())
     }
 
@@ -230,6 +261,39 @@ pub mod strata {
         emit!(Claimed { product: p.key(), user: ctx.accounts.user.key(), payout });
         Ok(())
     }
+
+    /// Writer reclaims whatever wasn't owed to buyers. Safe to call immediately after
+    /// finalize_product, before any buyer has claimed — the math guarantees this can
+    /// never touch funds buyers are owed:
+    ///
+    ///   total_owed_to_buyers = total_stake * final_payout_bps / 10_000
+    ///                        <= total_stake * top_tier_bps / 10_000      (final_bps <= top_tier_bps)
+    ///                        <= max_capacity * top_tier_bps / 10_000     (total_stake <= max_capacity, enforced in deposit)
+    ///                        == collateral_locked
+    ///
+    /// so vault_balance (collateral_locked + total_stake) minus total_owed_to_buyers is
+    /// always >= total_stake >= 0 — the surplus withdrawal can never dip into buyer funds.
+    pub fn withdraw_writer_surplus(ctx: Context<WithdrawWriterSurplus>) -> Result<()> {
+        let p = &ctx.accounts.product;
+        require!(p.status == ProductStatus::Settled, StrataError::NotSettled);
+        require!(!p.writer_withdrawn, StrataError::AlreadyClaimed);
+
+        let total_owed = (p.total_stake as u128)
+            .checked_mul(p.final_payout_bps as u128).ok_or(StrataError::Overflow)?
+            .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
+        let vault_balance = p.collateral_locked.checked_add(p.total_stake).ok_or(StrataError::Overflow)?;
+        let surplus = vault_balance.checked_sub(total_owed).ok_or(StrataError::Overflow)?;
+        let product_key = p.key();
+
+        if surplus > 0 {
+            **ctx.accounts.vault.to_account_info().try_borrow_mut_lamports()? -= surplus;
+            **ctx.accounts.writer.to_account_info().try_borrow_mut_lamports()? += surplus;
+        }
+
+        ctx.accounts.product.writer_withdrawn = true;
+        emit!(WriterSurplusWithdrawn { product: product_key, writer: ctx.accounts.writer.key(), surplus });
+        Ok(())
+    }
 }
 
 // ---------- state ----------
@@ -297,15 +361,21 @@ pub struct Product {
     pub final_payout_bps: u16,
     pub bump: u8,
     pub vault_bump: u8,
+    pub writer: Pubkey,
+    pub max_capacity: u64,
+    pub collateral_locked: u64,
+    pub writer_withdrawn: bool,
 }
 impl Product {
     // 8 disc + fixture_id 8 + nonce 4 + num_legs 1 + legs(MAX_LEGS*leg_size) + num_tiers 1 +
     // tiers(MAX_TIERS*tier_size) + leg_results(MAX_LEGS*1) + status 1 + closes_at 8 +
-    // settle_deadline 8 + total_stake 8 + final_payout_bps 2 + bump 1 + vault_bump 1
+    // settle_deadline 8 + total_stake 8 + final_payout_bps 2 + bump 1 + vault_bump 1 +
+    // writer 32 + max_capacity 8 + collateral_locked 8 + writer_withdrawn 1
     const LEG_SIZE: usize = 4 + 4 + 1 + 1 + 4 + 1;
     const TIER_SIZE: usize = 1 + 2;
     pub const SPACE: usize = 8 + 8 + 4 + 1 + (Self::LEG_SIZE * MAX_LEGS) + 1
-        + (Self::TIER_SIZE * MAX_TIERS) + (1 * MAX_LEGS) + 1 + 8 + 8 + 8 + 2 + 1 + 1;
+        + (Self::TIER_SIZE * MAX_TIERS) + (1 * MAX_LEGS) + 1 + 8 + 8 + 8 + 2 + 1 + 1
+        + 32 + 8 + 8 + 1;
 }
 
 #[account]
@@ -421,6 +491,19 @@ pub struct Claim<'info> {
     pub user: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct WithdrawWriterSurplus<'info> {
+    #[account(
+        mut, seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump,
+        has_one = writer @ StrataError::Unauthorized
+    )]
+    pub product: Account<'info, Product>,
+    #[account(mut, seeds = [VAULT_SEED, product.key().as_ref()], bump = product.vault_bump)]
+    pub vault: Account<'info, Vault>,
+    #[account(mut)]
+    pub writer: Signer<'info>,
+}
+
 // ---------- events ----------
 
 #[event]
@@ -436,6 +519,13 @@ pub struct ProductSettled {
     pub fixture_id: i64,
     pub legs_true: u8,
     pub payout_bps: u16,
+}
+
+#[event]
+pub struct WriterSurplusWithdrawn {
+    pub product: Pubkey,
+    pub writer: Pubkey,
+    pub surplus: u64,
 }
 
 #[event]
@@ -458,6 +548,7 @@ pub enum StrataError {
     #[msg("product not open")] ProductNotOpen,
     #[msg("product has closed for deposits")] ProductClosed,
     #[msg("amount must be > 0")] ZeroAmount,
+    #[msg("deposit would exceed product's max_capacity")] CapacityExceeded,
     #[msg("too early to settle, wait for closes_at")] TooEarlyToSettle,
     #[msg("bad leg index")] BadLegIndex,
     #[msg("leg already settled")] LegAlreadySettled,
