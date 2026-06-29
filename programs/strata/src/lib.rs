@@ -13,9 +13,11 @@ declare_id!("37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs");
 pub const MAX_LEGS: usize = 5;
 pub const MAX_TIERS: usize = 6;
 pub const PRODUCT_SEED: &[u8] = b"product";
-pub const VAULT_SEED: &[u8] = b"vault";
+pub const VAULT_SEED: &[u8] = b"vault"; // TODO(next commit): removed once create_product/deposit/claim move to the shared pool vault
 pub const POS_SEED: &[u8] = b"pos";
 pub const CONFIG_SEED: &[u8] = b"config";
+pub const POOL_SEED: &[u8] = b"writer_pool";
+pub const POOL_VAULT_SEED: &[u8] = b"pool_vault";
 
 #[program]
 pub mod strata {
@@ -34,6 +36,60 @@ pub mod strata {
 
     pub fn update_config(ctx: Context<UpdateConfig>, txoracle_program_id: Pubkey) -> Result<()> {
         ctx.accounts.config.txoracle_program_id = txoracle_program_id;
+        Ok(())
+    }
+
+    /// One pool per writer, shared across every product they create. Solvency is a single
+    /// running invariant, never a per-product calculation: at all times,
+    ///   pool_vault_balance >= reserved (open products' worst cases) + owed (settled,
+    ///   confirmed, not-yet-claimed payouts)
+    /// Every instruction below that touches reserved/owed preserves this invariant by
+    /// construction — see each one's doc comment for the specific argument.
+    pub fn initialize_writer_pool(ctx: Context<InitializeWriterPool>) -> Result<()> {
+        let pool = &mut ctx.accounts.writer_pool;
+        pool.writer = ctx.accounts.writer.key();
+        pool.reserved = 0;
+        pool.owed = 0;
+        pool.bump = ctx.bumps.writer_pool;
+        pool.vault_bump = ctx.bumps.pool_vault;
+        Ok(())
+    }
+
+    /// Writer adds capital ahead of creating products. Pure balance increase — trivially
+    /// preserves the solvency invariant (both sides of `>=` keep their values; only the
+    /// left side grows).
+    pub fn fund_pool(ctx: Context<FundPool>, amount: u64) -> Result<()> {
+        require!(amount > 0, StrataError::ZeroAmount);
+        system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.writer.to_account_info(),
+                    to: ctx.accounts.pool_vault.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+        Ok(())
+    }
+
+    /// Writer withdraws idle capital. Only ever allows taking out what's neither reserved
+    /// for an open product's worst case nor owed to a settled product's buyers — provably
+    /// safe across the writer's ENTIRE book of products at once, not product-by-product.
+    pub fn withdraw_from_pool(ctx: Context<WithdrawFromPool>, amount: u64) -> Result<()> {
+        require!(amount > 0, StrataError::ZeroAmount);
+        let pool = &ctx.accounts.writer_pool;
+        let rent_exempt = Rent::get()?.minimum_balance(PoolVault::SPACE);
+        let vault_balance = ctx.accounts.pool_vault.to_account_info().lamports();
+        let locked = pool.reserved.checked_add(pool.owed).ok_or(StrataError::Overflow)?;
+        let available = vault_balance
+            .checked_sub(rent_exempt).ok_or(StrataError::Overflow)?
+            .checked_sub(locked).ok_or(StrataError::Overflow)?;
+        require!(amount <= available, StrataError::InsufficientPoolBalance);
+
+        **ctx.accounts.pool_vault.to_account_info().try_borrow_mut_lamports()? -= amount;
+        **ctx.accounts.writer.to_account_info().try_borrow_mut_lamports()? += amount;
+        emit!(PoolWithdrawn { writer: ctx.accounts.writer.key(), amount });
         Ok(())
     }
 
@@ -308,6 +364,26 @@ impl Config {
     pub const SPACE: usize = 8 + 32 + 32 + 1;
 }
 
+#[account]
+pub struct WriterPool {
+    pub writer: Pubkey,
+    pub reserved: u64,
+    pub owed: u64,
+    pub bump: u8,
+    pub vault_bump: u8,
+}
+impl WriterPool {
+    pub const SPACE: usize = 8 + 32 + 8 + 8 + 1 + 1;
+}
+
+#[account]
+pub struct PoolVault {
+    pub bump: u8,
+}
+impl PoolVault {
+    pub const SPACE: usize = 8 + 1;
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default)]
 pub struct Leg {
     pub stat_key_a: u32,
@@ -423,6 +499,44 @@ pub struct UpdateConfig<'info> {
 }
 
 #[derive(Accounts)]
+pub struct InitializeWriterPool<'info> {
+    #[account(
+        init, payer = writer, space = WriterPool::SPACE,
+        seeds = [POOL_SEED, writer.key().as_ref()], bump
+    )]
+    pub writer_pool: Account<'info, WriterPool>,
+    #[account(
+        init, payer = writer, space = PoolVault::SPACE,
+        seeds = [POOL_VAULT_SEED, writer.key().as_ref()], bump
+    )]
+    pub pool_vault: Account<'info, PoolVault>,
+    #[account(mut)]
+    pub writer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct FundPool<'info> {
+    #[account(seeds = [POOL_SEED, writer.key().as_ref()], bump = writer_pool.bump, has_one = writer @ StrataError::Unauthorized)]
+    pub writer_pool: Account<'info, WriterPool>,
+    #[account(mut, seeds = [POOL_VAULT_SEED, writer.key().as_ref()], bump = writer_pool.vault_bump)]
+    pub pool_vault: Account<'info, PoolVault>,
+    #[account(mut)]
+    pub writer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawFromPool<'info> {
+    #[account(seeds = [POOL_SEED, writer.key().as_ref()], bump = writer_pool.bump, has_one = writer @ StrataError::Unauthorized)]
+    pub writer_pool: Account<'info, WriterPool>,
+    #[account(mut, seeds = [POOL_VAULT_SEED, writer.key().as_ref()], bump = writer_pool.vault_bump)]
+    pub pool_vault: Account<'info, PoolVault>,
+    #[account(mut)]
+    pub writer: Signer<'info>,
+}
+
+#[derive(Accounts)]
 #[instruction(fixture_id: i64, nonce: u32)]
 pub struct CreateProduct<'info> {
     #[account(
@@ -535,6 +649,12 @@ pub struct Claimed {
     pub payout: u64,
 }
 
+#[event]
+pub struct PoolWithdrawn {
+    pub writer: Pubkey,
+    pub amount: u64,
+}
+
 // ---------- errors ----------
 
 #[error_code]
@@ -548,6 +668,7 @@ pub enum StrataError {
     #[msg("product not open")] ProductNotOpen,
     #[msg("product has closed for deposits")] ProductClosed,
     #[msg("amount must be > 0")] ZeroAmount,
+    #[msg("withdrawal would dip into reserved or owed pool capital")] InsufficientPoolBalance,
     #[msg("deposit would exceed product's max_capacity")] CapacityExceeded,
     #[msg("too early to settle, wait for closes_at")] TooEarlyToSettle,
     #[msg("bad leg index")] BadLegIndex,
