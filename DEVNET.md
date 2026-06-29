@@ -33,42 +33,42 @@ ANCHOR_WALLET=~/.config/solana/oracle-keypair.json \
 pointing at TxLINE's devnet `txoracle` program `6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J`.
 Verified directly on-chain: owner is the Strata program, 73 bytes (matches `Config::SPACE`).
 
-## Real settlement against a live TxLINE proof
+## Shared writer pool — cross-product solvency
 
-Not a mock — `scripts/probe-txline.ts` subscribes (free tier), authenticates as a
-guest, and fetches a real `stat-validation` Merkle proof from TxLINE's devnet API.
-`scripts/real-settlement.ts` then runs `create_product` (writer posts real collateral) →
-`settle_leg` (real CPI into the real `txoracle` program, not the localnet mock) →
-`finalize_product` → `withdraw_writer_surplus`, all on devnet.
+Strata's products don't each lock their own collateral anymore. One pool per writer
+backs every product they create, with a single running invariant enforced at every
+mutation:
 
-**Product:** [`5nVjJJrdSw9E2VYF7xLJp1SFyw3nemVxkiwftZdV4q5Y`](https://explorer.solana.com/address/5nVjJJrdSw9E2VYF7xLJp1SFyw3nemVxkiwftZdV4q5Y?cluster=devnet)
-**settle_leg tx:** [`5w8drD6zKPohHZ49x9SnG787NZdfMAjCAhzR4d1bY7cj8dMkvXpcSxXDEmFiDNozcfsADfSRb7k2nWxMY7JXdCFo`](https://explorer.solana.com/tx/5w8drD6zKPohHZ49x9SnG787NZdfMAjCAhzR4d1bY7cj8dMkvXpcSxXDEmFiDNozcfsADfSRb7k2nWxMY7JXdCFo?cluster=devnet)
+```
+pool_vault_balance >= reserved (open products' worst cases) + owed (settled, confirmed, unclaimed payouts)
+```
 
-Verified independently via `solana confirm -v`, not just trusting the script's own
-output: real `ValidateStat` CPI, `SUCCESS: Found valid on-chain root for interval 215`,
-`Predicate evaluated to: true`, program return data `0x01`.
+`scripts/real-pool-settlement.ts` proves this for real on devnet, with real SOL:
+`initialize_writer_pool` → `fund_pool` → `create_product` **twice**, against the same
+pool, reserving both products' worst cases at once → `settle_leg` on one of them (real
+CPI into TxLINE's actual program) → `finalize_product`.
 
-**Scope note, stated plainly:** this run has no buyer deposit. settle_leg's anti-sniping
-check (the batch must postdate `closes_at`) means a buyer deposit needs `closes_at` in the
-future, but the only reliably available real proof — TxLINE's static documented example
-(fixture `17952170`, seq `941`, stat key `1002`) — is frozen historical data whose
-timestamp never advances. A 24h scan of TxLINE's live feed found one fixture that *was*
-genuinely live a few hours earlier (climbing seq numbers, real stats) but it isn't
-actively updating right now, so there's no currently-live fixture to demo the full buyer
-flow against either. Buyer-side economics (2.5x payout, real upside, surplus math) are
-proven separately and rigorously against the mock oracle in `tests/strata.ts` (6/6
-passing) — that doesn't depend on a live match existing. This script proves the other
-half for real: collateral posting, the CPI itself, and surplus reclaim, all with real SOL
-on devnet. `scripts/probe-txline.ts --discover` (with `--pinFixture`/`--pinStatKey` for
-re-fetching the same fixture's freshest batch) is ready to run the full buyer flow for
-real whenever TxLINE's simulation has an active match again.
+**Writer pool:** [`i7u34mcv1e6T7f8Q1bxVsWCvyzbgnsNTKu1f4Ay146B`](https://explorer.solana.com/address/i7u34mcv1e6T7f8Q1bxVsWCvyzbgnsNTKu1f4Ay146B?cluster=devnet)
+**Product A (settled):** [`GGUUiVL1uKVgEuoHiQnVHnwUre59jXrhNu6nuUjo3ojv`](https://explorer.solana.com/address/GGUUiVL1uKVgEuoHiQnVHnwUre59jXrhNu6nuUjo3ojv?cluster=devnet)
+**Product B (still open):** [`9DNhGwCBf2EmtM12ugZMdsAvjr3nLAShfqTNLcvhxJ1Q`](https://explorer.solana.com/address/9DNhGwCBf2EmtM12ugZMdsAvjr3nLAShfqTNLcvhxJ1Q?cluster=devnet)
+**settle_leg tx:** [`3XxHHo13EPHqQBPjwzfnEnKfjWSbSapCpsrTy1ZaoJsMxFxGYSHdAQLsfkydYh6qX7PLbT2PzDmkcpcyQGTkbnF2`](https://explorer.solana.com/tx/3XxHHo13EPHqQBPjwzfnEnKfjWSbSapCpsrTy1ZaoJsMxFxGYSHdAQLsfkydYh6qX7PLbT2PzDmkcpcyQGTkbnF2?cluster=devnet)
 
-The captured proof is committed as our own golden vector at
-`tests/fixtures/real-devnet-proof.json`, so this exact settlement is reproducible.
+On-chain arithmetic confirmed exactly as expected, not just "didn't error":
+`reserved` went `0 → 14,500,000` lamports after both `create_product` calls (matching
+`capacity × top_tier_bps / 10_000` for each, summed) → `4,500,000` after finalizing only
+product A (its 10M released; B's 4.5M still held since B is still open). `settle_leg`
+independently verified via `solana confirm -v`: real `ValidateStat` CPI,
+`Predicate evaluated to: true`.
+
+Same scope note as before applies: no buyer deposit in this run, for the reason
+documented in `scripts/real-pool-settlement.ts`'s header (no live TxLINE fixture active
+right now to safely demo against the anti-sniping check). Buyer-side accounting for the
+shared pool (claim, owed release) is proven rigorously in `tests/strata.ts`'s two-product
+test (7/7 passing).
 
 Re-run with:
 
 ```bash
 ANCHOR_WALLET=~/.config/solana/oracle-keypair.json ./node_modules/.bin/ts-node -P tsconfig.json scripts/probe-txline.ts
-ANCHOR_WALLET=~/.config/solana/oracle-keypair.json ./node_modules/.bin/ts-node -P tsconfig.json scripts/real-settlement.ts
+ANCHOR_WALLET=~/.config/solana/oracle-keypair.json ./node_modules/.bin/ts-node -P tsconfig.json scripts/real-pool-settlement.ts
 ```
