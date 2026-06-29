@@ -13,7 +13,6 @@ declare_id!("37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs");
 pub const MAX_LEGS: usize = 5;
 pub const MAX_TIERS: usize = 6;
 pub const PRODUCT_SEED: &[u8] = b"product";
-pub const VAULT_SEED: &[u8] = b"vault"; // TODO(next commit): removed once create_product/deposit/claim move to the shared pool vault
 pub const POS_SEED: &[u8] = b"pos";
 pub const CONFIG_SEED: &[u8] = b"config";
 pub const POOL_SEED: &[u8] = b"writer_pool";
@@ -93,11 +92,11 @@ pub mod strata {
         Ok(())
     }
 
-    /// Creator becomes the product's writer/underwriter: they post collateral upfront
-    /// covering the worst-case payout obligation (max_capacity at the top tier's payout),
-    /// the same way an options writer or a parametric-insurance underwriter locks capital
-    /// before selling protection. This is what gives buyers real upside — previously
-    /// payout was capped at returning a buyer's own stake, because nothing backed more.
+    /// Creator's writer pool reserves this product's worst-case obligation instead of
+    /// moving fresh collateral — the capital was already posted via fund_pool, possibly
+    /// backing other open products from the same writer too. This is the cross-product
+    /// capital efficiency: one pool, many products, one solvency check, not N separate
+    /// dedicated vaults.
     pub fn create_product(
         ctx: Context<CreateProduct>,
         fixture_id: i64,
@@ -132,18 +131,17 @@ pub mod strata {
             .checked_mul(top_tier_bps as u128).ok_or(StrataError::Overflow)?
             .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
 
-        if collateral_required > 0 {
-            system_program::transfer(
-                CpiContext::new(
-                    ctx.accounts.system_program.to_account_info(),
-                    system_program::Transfer {
-                        from: ctx.accounts.payer.to_account_info(),
-                        to: ctx.accounts.vault.to_account_info(),
-                    },
-                ),
-                collateral_required,
-            )?;
-        }
+        // Reserve against the pool: require enough capital sits unreserved/unowed in the
+        // pool vault already (posted via fund_pool ahead of time), then book the reservation.
+        let pool = &mut ctx.accounts.writer_pool;
+        let rent_exempt = Rent::get()?.minimum_balance(PoolVault::SPACE);
+        let vault_balance = ctx.accounts.pool_vault.to_account_info().lamports();
+        let locked = pool.reserved.checked_add(pool.owed).ok_or(StrataError::Overflow)?;
+        let available = vault_balance
+            .checked_sub(rent_exempt).ok_or(StrataError::Overflow)?
+            .checked_sub(locked).ok_or(StrataError::Overflow)?;
+        require!(collateral_required <= available, StrataError::InsufficientPoolBalance);
+        pool.reserved = pool.reserved.checked_add(collateral_required).ok_or(StrataError::Overflow)?;
 
         let p = &mut ctx.accounts.product;
         p.fixture_id = fixture_id;
@@ -165,11 +163,10 @@ pub mod strata {
         p.total_stake = 0;
         p.final_payout_bps = 0;
         p.writer = ctx.accounts.payer.key();
+        p.writer_pool = ctx.accounts.writer_pool.key();
         p.max_capacity = max_capacity;
         p.collateral_locked = collateral_required;
-        p.writer_withdrawn = false;
         p.bump = ctx.bumps.product;
-        p.vault_bump = ctx.bumps.vault;
         Ok(())
     }
 
@@ -185,7 +182,7 @@ pub mod strata {
                 ctx.accounts.system_program.to_account_info(),
                 system_program::Transfer {
                     from: ctx.accounts.user.to_account_info(),
-                    to: ctx.accounts.vault.to_account_info(),
+                    to: ctx.accounts.pool_vault.to_account_info(),
                 },
             ),
             amount,
@@ -265,7 +262,11 @@ pub mod strata {
     }
 
     /// Tallies proven legs into the tier table. Legs left unsettled past settle_deadline
-    /// default to False so the product always resolves to a payout.
+    /// default to False so the product always resolves to a payout. Also moves this
+    /// product's obligation from the pool's `reserved` (worst case, while open) to `owed`
+    /// (the actual confirmed liability) — a pure transfer between the two counters, so the
+    /// pool's solvency invariant (vault_balance >= reserved + owed) is unaffected by this
+    /// instruction; it only ever changes which bucket an amount sits in, never the total.
     pub fn finalize_product(ctx: Context<FinalizeProduct>) -> Result<()> {
         let p = &mut ctx.accounts.product;
         require!(p.status == ProductStatus::Open, StrataError::ProductNotOpen);
@@ -290,12 +291,23 @@ pub mod strata {
             }
         }
 
+        let total_owed = (p.total_stake as u128)
+            .checked_mul(payout_bps as u128).ok_or(StrataError::Overflow)?
+            .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
+
+        let pool = &mut ctx.accounts.writer_pool;
+        pool.reserved = pool.reserved.checked_sub(p.collateral_locked).ok_or(StrataError::Overflow)?;
+        pool.owed = pool.owed.checked_add(total_owed).ok_or(StrataError::Overflow)?;
+
         p.status = ProductStatus::Settled;
         p.final_payout_bps = payout_bps;
         emit!(ProductSettled { product: p.key(), fixture_id: p.fixture_id, legs_true, payout_bps });
         Ok(())
     }
 
+    /// Pays from the shared pool vault, not a per-product vault, and releases this
+    /// buyer's share of `owed` on the pool — keeping the pool-wide invariant exact as
+    /// claims happen one at a time, in any order, by any number of buyers.
     pub fn claim(ctx: Context<Claim>) -> Result<()> {
         let p = &ctx.accounts.product;
         require!(p.status == ProductStatus::Settled, StrataError::NotSettled);
@@ -309,45 +321,13 @@ pub mod strata {
             .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
 
         if payout > 0 {
-            **ctx.accounts.vault.to_account_info().try_borrow_mut_lamports()? -= payout;
+            **ctx.accounts.pool_vault.to_account_info().try_borrow_mut_lamports()? -= payout;
             **ctx.accounts.user.to_account_info().try_borrow_mut_lamports()? += payout;
+            ctx.accounts.writer_pool.owed = ctx.accounts.writer_pool.owed.checked_sub(payout).ok_or(StrataError::Overflow)?;
         }
 
         ctx.accounts.position.claimed = true;
         emit!(Claimed { product: p.key(), user: ctx.accounts.user.key(), payout });
-        Ok(())
-    }
-
-    /// Writer reclaims whatever wasn't owed to buyers. Safe to call immediately after
-    /// finalize_product, before any buyer has claimed — the math guarantees this can
-    /// never touch funds buyers are owed:
-    ///
-    ///   total_owed_to_buyers = total_stake * final_payout_bps / 10_000
-    ///                        <= total_stake * top_tier_bps / 10_000      (final_bps <= top_tier_bps)
-    ///                        <= max_capacity * top_tier_bps / 10_000     (total_stake <= max_capacity, enforced in deposit)
-    ///                        == collateral_locked
-    ///
-    /// so vault_balance (collateral_locked + total_stake) minus total_owed_to_buyers is
-    /// always >= total_stake >= 0 — the surplus withdrawal can never dip into buyer funds.
-    pub fn withdraw_writer_surplus(ctx: Context<WithdrawWriterSurplus>) -> Result<()> {
-        let p = &ctx.accounts.product;
-        require!(p.status == ProductStatus::Settled, StrataError::NotSettled);
-        require!(!p.writer_withdrawn, StrataError::AlreadyClaimed);
-
-        let total_owed = (p.total_stake as u128)
-            .checked_mul(p.final_payout_bps as u128).ok_or(StrataError::Overflow)?
-            .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
-        let vault_balance = p.collateral_locked.checked_add(p.total_stake).ok_or(StrataError::Overflow)?;
-        let surplus = vault_balance.checked_sub(total_owed).ok_or(StrataError::Overflow)?;
-        let product_key = p.key();
-
-        if surplus > 0 {
-            **ctx.accounts.vault.to_account_info().try_borrow_mut_lamports()? -= surplus;
-            **ctx.accounts.writer.to_account_info().try_borrow_mut_lamports()? += surplus;
-        }
-
-        ctx.accounts.product.writer_withdrawn = true;
-        emit!(WriterSurplusWithdrawn { product: product_key, writer: ctx.accounts.writer.key(), surplus });
         Ok(())
     }
 }
@@ -436,30 +416,21 @@ pub struct Product {
     pub total_stake: u64,
     pub final_payout_bps: u16,
     pub bump: u8,
-    pub vault_bump: u8,
     pub writer: Pubkey,
+    pub writer_pool: Pubkey,
     pub max_capacity: u64,
     pub collateral_locked: u64,
-    pub writer_withdrawn: bool,
 }
 impl Product {
     // 8 disc + fixture_id 8 + nonce 4 + num_legs 1 + legs(MAX_LEGS*leg_size) + num_tiers 1 +
     // tiers(MAX_TIERS*tier_size) + leg_results(MAX_LEGS*1) + status 1 + closes_at 8 +
-    // settle_deadline 8 + total_stake 8 + final_payout_bps 2 + bump 1 + vault_bump 1 +
-    // writer 32 + max_capacity 8 + collateral_locked 8 + writer_withdrawn 1
+    // settle_deadline 8 + total_stake 8 + final_payout_bps 2 + bump 1 +
+    // writer 32 + writer_pool 32 + max_capacity 8 + collateral_locked 8
     const LEG_SIZE: usize = 4 + 4 + 1 + 1 + 4 + 1;
     const TIER_SIZE: usize = 1 + 2;
     pub const SPACE: usize = 8 + 8 + 4 + 1 + (Self::LEG_SIZE * MAX_LEGS) + 1
-        + (Self::TIER_SIZE * MAX_TIERS) + (1 * MAX_LEGS) + 1 + 8 + 8 + 8 + 2 + 1 + 1
-        + 32 + 8 + 8 + 1;
-}
-
-#[account]
-pub struct Vault {
-    pub bump: u8,
-}
-impl Vault {
-    pub const SPACE: usize = 8 + 1;
+        + (Self::TIER_SIZE * MAX_TIERS) + (1 * MAX_LEGS) + 1 + 8 + 8 + 8 + 2 + 1
+        + 32 + 32 + 8 + 8;
 }
 
 #[account]
@@ -544,11 +515,11 @@ pub struct CreateProduct<'info> {
         seeds = [PRODUCT_SEED, &fixture_id.to_le_bytes(), &nonce.to_le_bytes()], bump
     )]
     pub product: Account<'info, Product>,
-    #[account(
-        init, payer = payer, space = Vault::SPACE,
-        seeds = [VAULT_SEED, product.key().as_ref()], bump
-    )]
-    pub vault: Account<'info, Vault>,
+    // seeds alone prove payer owns this pool — only one WriterPool exists per writer key.
+    #[account(mut, seeds = [POOL_SEED, payer.key().as_ref()], bump = writer_pool.bump)]
+    pub writer_pool: Account<'info, WriterPool>,
+    #[account(seeds = [POOL_VAULT_SEED, payer.key().as_ref()], bump = writer_pool.vault_bump)]
+    pub pool_vault: Account<'info, PoolVault>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -558,8 +529,8 @@ pub struct CreateProduct<'info> {
 pub struct Deposit<'info> {
     #[account(mut, seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump)]
     pub product: Account<'info, Product>,
-    #[account(mut, seeds = [VAULT_SEED, product.key().as_ref()], bump = product.vault_bump)]
-    pub vault: Account<'info, Vault>,
+    #[account(mut, seeds = [POOL_VAULT_SEED, product.writer.as_ref()], bump)]
+    pub pool_vault: Account<'info, PoolVault>,
     #[account(
         init_if_needed, payer = user, space = Position::SPACE,
         seeds = [POS_SEED, product.key().as_ref(), user.key().as_ref()], bump
@@ -588,14 +559,18 @@ pub struct SettleLeg<'info> {
 pub struct FinalizeProduct<'info> {
     #[account(mut, seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump)]
     pub product: Account<'info, Product>,
+    #[account(mut, seeds = [POOL_SEED, product.writer.as_ref()], bump = writer_pool.bump, address = product.writer_pool @ StrataError::Unauthorized)]
+    pub writer_pool: Account<'info, WriterPool>,
 }
 
 #[derive(Accounts)]
 pub struct Claim<'info> {
     #[account(seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump)]
     pub product: Account<'info, Product>,
-    #[account(mut, seeds = [VAULT_SEED, product.key().as_ref()], bump = product.vault_bump)]
-    pub vault: Account<'info, Vault>,
+    #[account(mut, seeds = [POOL_SEED, product.writer.as_ref()], bump = writer_pool.bump, address = product.writer_pool @ StrataError::Unauthorized)]
+    pub writer_pool: Account<'info, WriterPool>,
+    #[account(mut, seeds = [POOL_VAULT_SEED, product.writer.as_ref()], bump = writer_pool.vault_bump)]
+    pub pool_vault: Account<'info, PoolVault>,
     #[account(
         mut, seeds = [POS_SEED, product.key().as_ref(), user.key().as_ref()], bump = position.bump,
         has_one = user @ StrataError::Unauthorized
@@ -603,19 +578,6 @@ pub struct Claim<'info> {
     pub position: Account<'info, Position>,
     #[account(mut)]
     pub user: Signer<'info>,
-}
-
-#[derive(Accounts)]
-pub struct WithdrawWriterSurplus<'info> {
-    #[account(
-        mut, seeds = [PRODUCT_SEED, &product.fixture_id.to_le_bytes(), &product.nonce.to_le_bytes()], bump = product.bump,
-        has_one = writer @ StrataError::Unauthorized
-    )]
-    pub product: Account<'info, Product>,
-    #[account(mut, seeds = [VAULT_SEED, product.key().as_ref()], bump = product.vault_bump)]
-    pub vault: Account<'info, Vault>,
-    #[account(mut)]
-    pub writer: Signer<'info>,
 }
 
 // ---------- events ----------
@@ -633,13 +595,6 @@ pub struct ProductSettled {
     pub fixture_id: i64,
     pub legs_true: u8,
     pub payout_bps: u16,
-}
-
-#[event]
-pub struct WriterSurplusWithdrawn {
-    pub product: Pubkey,
-    pub writer: Pubkey,
-    pub surplus: u64,
 }
 
 #[event]
