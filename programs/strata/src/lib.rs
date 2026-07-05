@@ -17,6 +17,12 @@ pub const POS_SEED: &[u8] = b"pos";
 pub const CONFIG_SEED: &[u8] = b"config";
 pub const POOL_SEED: &[u8] = b"writer_pool";
 pub const POOL_VAULT_SEED: &[u8] = b"pool_vault";
+pub const GEO_PRODUCT_SEED: &[u8] = b"geo_product";
+pub const GEO_POS_SEED: &[u8] = b"geo_pos";
+// 5x cap (u16 max is 65_535, so this is as close to a 10x cap as the type allows), same spirit
+// as the tiered engine's top-tier collateral cap — a market can never promise more than this
+// multiple of its max_capacity.
+pub const MAX_GEO_PAYOUT_BPS: u16 = 50_000;
 
 #[program]
 pub mod strata {
@@ -330,6 +336,178 @@ pub mod strata {
         emit!(Claimed { product: p.key(), user: ctx.accounts.user.key(), payout });
         Ok(())
     }
+
+    // ---------- geometric products: exact-outcome bets via validate_stat_v2 ----------
+    // A genuinely different product family from the tiered engine above, not a replacement:
+    // validate_stat_v2's single aggregate bool per strategy can't express "N of M legs true"
+    // tiering, but it CAN express something V1 never could — "is the real outcome within some
+    // distance of a predicted vector of stat values" (e.g. predict the exact scoreline).
+    // Binary payout (all-or-nothing), same pool/deposit/claim plumbing as the tiered engine.
+
+    pub fn create_geo_product(
+        ctx: Context<CreateGeoProduct>,
+        fixture_id: i64,
+        nonce: u32,
+        stat_key_a: u32,
+        stat_key_b: u32,
+        prediction_a: i32,
+        prediction_b: i32,
+        distance_threshold: i32,
+        distance_comparison: Comparison,
+        payout_bps_if_true: u16,
+        closes_at: i64,
+        settle_deadline: i64,
+        max_capacity: u64,
+    ) -> Result<()> {
+        require!(settle_deadline > closes_at, StrataError::BadDeadline);
+        require!(max_capacity > 0, StrataError::ZeroAmount);
+        require!(payout_bps_if_true > 0 && payout_bps_if_true <= MAX_GEO_PAYOUT_BPS, StrataError::BadPayoutBps);
+
+        let collateral_required = (max_capacity as u128)
+            .checked_mul(payout_bps_if_true as u128).ok_or(StrataError::Overflow)?
+            .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
+
+        let pool = &mut ctx.accounts.writer_pool;
+        let rent_exempt = Rent::get()?.minimum_balance(PoolVault::SPACE);
+        let vault_balance = ctx.accounts.pool_vault.to_account_info().lamports();
+        let locked = pool.reserved.checked_add(pool.owed).ok_or(StrataError::Overflow)?;
+        let available = vault_balance
+            .checked_sub(rent_exempt).ok_or(StrataError::Overflow)?
+            .checked_sub(locked).ok_or(StrataError::Overflow)?;
+        require!(collateral_required <= available, StrataError::InsufficientPoolBalance);
+        pool.reserved = pool.reserved.checked_add(collateral_required).ok_or(StrataError::Overflow)?;
+
+        let p = &mut ctx.accounts.geo_product;
+        p.fixture_id = fixture_id;
+        p.nonce = nonce;
+        p.stat_key_a = stat_key_a;
+        p.stat_key_b = stat_key_b;
+        p.prediction_a = prediction_a;
+        p.prediction_b = prediction_b;
+        p.distance_threshold = distance_threshold;
+        p.distance_comparison = distance_comparison;
+        p.payout_bps_if_true = payout_bps_if_true;
+        p.status = ProductStatus::Open;
+        p.closes_at = closes_at;
+        p.settle_deadline = settle_deadline;
+        p.total_stake = 0;
+        p.final_payout_bps = 0;
+        p.writer = ctx.accounts.payer.key();
+        p.writer_pool = ctx.accounts.writer_pool.key();
+        p.max_capacity = max_capacity;
+        p.collateral_locked = collateral_required;
+        p.bump = ctx.bumps.geo_product;
+        Ok(())
+    }
+
+    pub fn deposit_geo(ctx: Context<DepositGeo>, amount: u64) -> Result<()> {
+        require!(ctx.accounts.geo_product.status == ProductStatus::Open, StrataError::ProductNotOpen);
+        require!(Clock::get()?.unix_timestamp < ctx.accounts.geo_product.closes_at, StrataError::ProductClosed);
+        require!(amount > 0, StrataError::ZeroAmount);
+        let new_total = ctx.accounts.geo_product.total_stake.checked_add(amount).ok_or(StrataError::Overflow)?;
+        require!(new_total <= ctx.accounts.geo_product.max_capacity, StrataError::CapacityExceeded);
+
+        system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.user.to_account_info(),
+                    to: ctx.accounts.pool_vault.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+
+        let pos = &mut ctx.accounts.position;
+        pos.user = ctx.accounts.user.key();
+        pos.product = ctx.accounts.geo_product.key();
+        pos.stake = pos.stake.checked_add(amount).ok_or(StrataError::Overflow)?;
+        pos.claimed = false;
+        pos.bump = ctx.bumps.position;
+
+        ctx.accounts.geo_product.total_stake = new_total;
+        Ok(())
+    }
+
+    /// Permissionless, single-shot: settle and finalize together, since a geometric product
+    /// resolves to one atomic true/false, not a per-leg tally needing a separate finalize pass.
+    pub fn settle_geo_product(
+        ctx: Context<SettleGeoProduct>,
+        ts: i64,
+        fixture_summary: ScoresBatchSummary,
+        fixture_proof: Vec<ProofNode>,
+        main_tree_proof: Vec<ProofNode>,
+        event_stat_root: [u8; 32],
+        stats: Vec<StatLeaf>,
+    ) -> Result<()> {
+        {
+            let p = &ctx.accounts.geo_product;
+            require!(p.status == ProductStatus::Open, StrataError::ProductNotOpen);
+            require!(Clock::get()?.unix_timestamp >= p.closes_at, StrataError::TooEarlyToSettle);
+            require!(fixture_summary.fixture_id == p.fixture_id, StrataError::FixtureMismatch);
+            let closes_at_ms = p.closes_at.checked_mul(1000).ok_or(StrataError::Overflow)?;
+            require!(fixture_summary.update_stats.min_timestamp > closes_at_ms, StrataError::BatchPredatesClose);
+            require!(stats.len() == 2, StrataError::WrongStatCount);
+            require!(stats[0].stat.key == p.stat_key_a, StrataError::StatKeyMismatch);
+            require!(stats[1].stat.key == p.stat_key_b, StrataError::StatKeyMismatch);
+        }
+
+        let p = &ctx.accounts.geo_product;
+        let strategy = NDimensionalStrategy {
+            geometric_targets: vec![
+                GeometricTarget { stat_index: 0, prediction: p.prediction_a },
+                GeometricTarget { stat_index: 1, prediction: p.prediction_b },
+            ],
+            distance_predicate: Some(TraderPredicate { threshold: p.distance_threshold, comparison: p.distance_comparison }),
+            discrete_predicates: vec![],
+        };
+        let payload = StatValidationInput { ts, fixture_summary, fixture_proof, main_tree_proof, event_stat_root, stats };
+
+        let won = cpi_validate_stat_v2(
+            &ctx.accounts.txoracle_program.to_account_info(),
+            &ctx.accounts.daily_scores_merkle_roots.to_account_info(),
+            payload,
+            strategy,
+        )?;
+
+        let p = &mut ctx.accounts.geo_product;
+        let payout_bps: u16 = if won { p.payout_bps_if_true } else { 0 };
+        let total_owed = (p.total_stake as u128)
+            .checked_mul(payout_bps as u128).ok_or(StrataError::Overflow)?
+            .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
+
+        let pool = &mut ctx.accounts.writer_pool;
+        pool.reserved = pool.reserved.checked_sub(p.collateral_locked).ok_or(StrataError::Overflow)?;
+        pool.owed = pool.owed.checked_add(total_owed).ok_or(StrataError::Overflow)?;
+
+        p.status = ProductStatus::Settled;
+        p.final_payout_bps = payout_bps;
+        emit!(GeoProductSettled { geo_product: p.key(), fixture_id: p.fixture_id, won, payout_bps });
+        Ok(())
+    }
+
+    pub fn claim_geo(ctx: Context<ClaimGeo>) -> Result<()> {
+        let p = &ctx.accounts.geo_product;
+        require!(p.status == ProductStatus::Settled, StrataError::NotSettled);
+        require!(!ctx.accounts.position.claimed, StrataError::AlreadyClaimed);
+
+        let stake = ctx.accounts.position.stake;
+        require!(stake > 0, StrataError::NothingToClaim);
+
+        let payout = (stake as u128)
+            .checked_mul(p.final_payout_bps as u128).ok_or(StrataError::Overflow)?
+            .checked_div(10_000u128).ok_or(StrataError::Overflow)? as u64;
+
+        if payout > 0 {
+            **ctx.accounts.pool_vault.to_account_info().try_borrow_mut_lamports()? -= payout;
+            **ctx.accounts.user.to_account_info().try_borrow_mut_lamports()? += payout;
+            ctx.accounts.writer_pool.owed = ctx.accounts.writer_pool.owed.checked_sub(payout).ok_or(StrataError::Overflow)?;
+        }
+
+        ctx.accounts.position.claimed = true;
+        emit!(Claimed { product: p.key(), user: ctx.accounts.user.key(), payout });
+        Ok(())
+    }
 }
 
 // ---------- state ----------
@@ -443,6 +621,36 @@ pub struct Position {
 }
 impl Position {
     pub const SPACE: usize = 8 + 32 + 32 + 8 + 1 + 1;
+}
+
+/// A geometric (exact-outcome) product, settled via validate_stat_v2's distance predicate
+/// instead of the tiered engine's per-leg validate_stat calls. Binary payout: the predicted
+/// vector either lands within distance_threshold of the real outcome, or it doesn't.
+#[account]
+pub struct GeoProduct {
+    pub fixture_id: i64,
+    pub nonce: u32,
+    pub stat_key_a: u32,
+    pub stat_key_b: u32,
+    pub prediction_a: i32,
+    pub prediction_b: i32,
+    pub distance_threshold: i32,
+    pub distance_comparison: Comparison,
+    pub payout_bps_if_true: u16,
+    pub status: ProductStatus,
+    pub closes_at: i64,
+    pub settle_deadline: i64,
+    pub total_stake: u64,
+    pub final_payout_bps: u16,
+    pub writer: Pubkey,
+    pub writer_pool: Pubkey,
+    pub max_capacity: u64,
+    pub collateral_locked: u64,
+    pub bump: u8,
+}
+impl GeoProduct {
+    pub const SPACE: usize = 8 + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 1 + 2 + 1 + 8 + 8 + 8 + 2
+        + 32 + 32 + 8 + 8 + 1;
 }
 
 // ---------- contexts ----------
@@ -580,6 +788,72 @@ pub struct Claim<'info> {
     pub user: Signer<'info>,
 }
 
+#[derive(Accounts)]
+#[instruction(fixture_id: i64, nonce: u32)]
+pub struct CreateGeoProduct<'info> {
+    #[account(
+        init, payer = payer, space = GeoProduct::SPACE,
+        seeds = [GEO_PRODUCT_SEED, &fixture_id.to_le_bytes(), &nonce.to_le_bytes()], bump
+    )]
+    pub geo_product: Account<'info, GeoProduct>,
+    #[account(mut, seeds = [POOL_SEED, payer.key().as_ref()], bump = writer_pool.bump)]
+    pub writer_pool: Account<'info, WriterPool>,
+    #[account(seeds = [POOL_VAULT_SEED, payer.key().as_ref()], bump = writer_pool.vault_bump)]
+    pub pool_vault: Account<'info, PoolVault>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct DepositGeo<'info> {
+    #[account(mut, seeds = [GEO_PRODUCT_SEED, &geo_product.fixture_id.to_le_bytes(), &geo_product.nonce.to_le_bytes()], bump = geo_product.bump)]
+    pub geo_product: Account<'info, GeoProduct>,
+    #[account(mut, seeds = [POOL_VAULT_SEED, geo_product.writer.as_ref()], bump)]
+    pub pool_vault: Account<'info, PoolVault>,
+    #[account(
+        init_if_needed, payer = user, space = Position::SPACE,
+        seeds = [GEO_POS_SEED, geo_product.key().as_ref(), user.key().as_ref()], bump
+    )]
+    pub position: Account<'info, Position>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct SettleGeoProduct<'info> {
+    #[account(mut, seeds = [GEO_PRODUCT_SEED, &geo_product.fixture_id.to_le_bytes(), &geo_product.nonce.to_le_bytes()], bump = geo_product.bump)]
+    pub geo_product: Account<'info, GeoProduct>,
+    #[account(mut, seeds = [POOL_SEED, geo_product.writer.as_ref()], bump = writer_pool.bump, address = geo_product.writer_pool @ StrataError::Unauthorized)]
+    pub writer_pool: Account<'info, WriterPool>,
+    #[account(seeds = [CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    /// CHECK: must match config.txoracle_program_id
+    #[account(address = config.txoracle_program_id)]
+    pub txoracle_program: UncheckedAccount<'info>,
+    /// CHECK: daily_scores roots PDA; the oracle program validates its discriminator+owner internally
+    #[account(owner = config.txoracle_program_id)]
+    pub daily_scores_merkle_roots: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimGeo<'info> {
+    #[account(seeds = [GEO_PRODUCT_SEED, &geo_product.fixture_id.to_le_bytes(), &geo_product.nonce.to_le_bytes()], bump = geo_product.bump)]
+    pub geo_product: Account<'info, GeoProduct>,
+    #[account(mut, seeds = [POOL_SEED, geo_product.writer.as_ref()], bump = writer_pool.bump, address = geo_product.writer_pool @ StrataError::Unauthorized)]
+    pub writer_pool: Account<'info, WriterPool>,
+    #[account(mut, seeds = [POOL_VAULT_SEED, geo_product.writer.as_ref()], bump = writer_pool.vault_bump)]
+    pub pool_vault: Account<'info, PoolVault>,
+    #[account(
+        mut, seeds = [GEO_POS_SEED, geo_product.key().as_ref(), user.key().as_ref()], bump = position.bump,
+        has_one = user @ StrataError::Unauthorized
+    )]
+    pub position: Account<'info, Position>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+}
+
 // ---------- events ----------
 
 #[event]
@@ -610,6 +884,14 @@ pub struct PoolWithdrawn {
     pub amount: u64,
 }
 
+#[event]
+pub struct GeoProductSettled {
+    pub geo_product: Pubkey,
+    pub fixture_id: i64,
+    pub won: bool,
+    pub payout_bps: u16,
+}
+
 // ---------- errors ----------
 
 #[error_code]
@@ -638,4 +920,6 @@ pub enum StrataError {
     #[msg("nothing to claim")] NothingToClaim,
     #[msg("unauthorized")] Unauthorized,
     #[msg("overflow")] Overflow,
+    #[msg("payout_bps_if_true must be 1..=MAX_GEO_PAYOUT_BPS")] BadPayoutBps,
+    #[msg("expected exactly 2 stats for a geometric product")] WrongStatCount,
 }
