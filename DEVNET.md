@@ -72,3 +72,40 @@ Re-run with:
 ANCHOR_WALLET=~/.config/solana/oracle-keypair.json ./node_modules/.bin/ts-node -P tsconfig.json scripts/probe-txline.ts
 ANCHOR_WALLET=~/.config/solana/oracle-keypair.json ./node_modules/.bin/ts-node -P tsconfig.json scripts/real-pool-settlement.ts
 ```
+
+## Live buyer-deposit flow — the full loop, against a genuinely live match
+
+`scripts/live-buyer-flow.ts` closes the one gap every script above left open: a real
+`deposit` made *before* the data it bets on exists, settled only once TxLINE seals a
+batch that actually postdates the deposit's `closes_at` — not a frozen historical proof.
+
+Run against fixture 18187298 (Brazil vs Norway, World Cup Round of 16, kicked off
+2026-07-05 20:00 UTC):
+
+1. Confirmed the fixture was live via the SSE stream (`scripts/watch-stream.ts`).
+2. `create_product` with `closes_at` ~15s in the future, then `deposit` immediately —
+   locked in before any post-close data existed.
+3. Polled TxLINE's `/scores/updates` + `/scores/stat-validation` every 30s. Took ~9.5
+   minutes (19 retries) for a batch to seal with `minTimestamp` genuinely later than
+   `closes_at` — this is TxLINE's real ~5-minute batch cadence, not a simulated wait.
+4. `settle_leg` — real CPI into TxLINE's actual `validate_stat`, against that
+   freshly-sealed batch. Leg resolved `false` (the real stat didn't clear the
+   threshold in that window) → `finalize_product` → `final_payout_bps: 0` → `claim`
+   paid out 0, correctly.
+
+**Product:** `6UNaWnAMpjHHxzC8KD78wYekjVwNNHKVMnm1rf5TiG9s`
+**Writer pool:** `i7u34mcv1e6T7f8Q1bxVsWCvyzbgnsNTKu1f4Ay146B`
+**Tx signatures:** create `3jxaXbbiU93B6f9hqnMCYUuvkNppBxYJJ5yvmM9wam4fiZthtBYVYJ2qV5tEQxfXVBsfoyczZvF3Fx4efKwDFC2S`,
+deposit `59ChHQ9WQLhWfNbCinoBCH5RTqSTAGgv6m1Rvz5BdigbT1giRpcu4z1iwD5LK7rGbrCtXtY2zMYbgLKwAgzWZJz8`,
+settle `qT9VYW1NyLEt5ViGFdxhy4Me7MkSc6GxbVKXi3zfz4X5xYY1d66ZeoDPSD8phZ6DfGEiVfZ4o1aFvk42Kq3V7y8`,
+finalize `51QTZAEK5uTd1FNjhvX4nmjeBxGEzFsZ9D3TSxPoCjq2wosP5RA3JifuJGWQLTSgFFhqzSpqfRtqhyZdJeJSDe9w`,
+claim `gDtHhnTCKMWsVfauNChetj4V1yG1fQ1r2j7JCZGPLKZpHmXsMEBw2CGCxAJQvFRuyVrwrYPrYbvD8kUZYZ1N4CH`.
+
+The losing outcome is itself part of the proof: nothing was rigged to guarantee a win,
+the payout followed whatever the real, freshly-proven data said.
+
+Re-run against any live fixture with:
+
+```bash
+ANCHOR_WALLET=~/.config/solana/oracle-keypair.json ./node_modules/.bin/ts-node -P tsconfig.json scripts/live-buyer-flow.ts <fixtureId>
+```
