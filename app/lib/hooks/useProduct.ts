@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { PublicKey } from "@solana/web3.js";
 import { useStrataProgram } from "./useStrataProgram";
-import { PRODUCT_SEED, STRATA_PROGRAM_ID } from "@/lib/constants";
+import { productPda as sharedProductPda } from "@/lib/pdas";
 
 export type LegResult = "unsettled" | "true" | "false";
 export type ProductStatus = "open" | "settled";
@@ -41,16 +41,7 @@ export interface ProductState {
   collateralLocked: bigint;
 }
 
-export function productPda(fixtureId: bigint, nonce: number): PublicKey {
-  const fixtureIdBuf = Buffer.alloc(8);
-  fixtureIdBuf.writeBigInt64LE(fixtureId);
-  const nonceBuf = Buffer.alloc(4);
-  nonceBuf.writeUInt32LE(nonce);
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from(PRODUCT_SEED), fixtureIdBuf, nonceBuf],
-    STRATA_PROGRAM_ID
-  )[0];
-}
+export const productPda = sharedProductPda;
 
 function decodeEnumKey<T extends string>(value: Record<string, unknown>): T {
   return Object.keys(value)[0] as T;
