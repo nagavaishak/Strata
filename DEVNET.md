@@ -2,6 +2,17 @@
 
 **Program:** [`37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs`](https://explorer.solana.com/address/37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs?cluster=devnet)
 
+**Live frontend:** https://app-wine-six-56.vercel.app — deployed against this same
+devnet program, connect a devnet wallet to try the full build/watch/verify flow.
+Server-side TxLINE proxy verified working in production (not just locally): the
+`ORACLE_KEYPAIR_JSON` env var, subscribe/guest-JWT/API-token flow, and
+`/api/txline/*` routes all confirmed functional post-deploy. One caveat: the
+session cache in `app/lib/txline/session.ts` assumes a long-lived process: a
+serverless cold start on a different instance can re-run the subscribe flow
+instead of reusing the cache. Not a cost/security issue (devnet SOL, and the
+keypair never leaves the server), just means occasional requests are slower
+than the warm-cache path.
+
 Deployed via `anchor deploy --provider.cluster devnet --program-name strata`.
 
 ## If `anchor deploy` complains about `DeclaredProgramIdMismatch`

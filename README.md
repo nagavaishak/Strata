@@ -6,4 +6,10 @@ Instead of a binary win/lose market, a Strata product bundles N stat conditions 
 
 See [design/diagrams/settlement_architecture.md](design/diagrams/settlement_architecture.md) for the full pipeline, account map, and instruction set.
 
+**Live app:** https://app-wine-six-56.vercel.app · **Devnet program:** [`37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs`](https://explorer.solana.com/address/37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs?cluster=devnet)
+
+- [TECHNICAL.md](TECHNICAL.md) — core idea, technical highlights, TxLINE endpoints used
+- [FEEDBACK.md](FEEDBACK.md) — our experience building against the TxLINE API
+- [DEVNET.md](DEVNET.md) — every proof run, real transaction signatures, deployment notes
+
 Built for Superteam Ireland's World Cup Hackathon — Track 1: Prediction Markets and Settlement.
