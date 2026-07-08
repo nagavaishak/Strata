@@ -102,8 +102,11 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
   };
 
   return (
-    <div className="space-y-4 rounded-lg border border-border bg-card p-4">
-      <h2 className="text-sm font-semibold text-foreground">Take a position</h2>
+    <div className="market-shell space-y-5 rounded-[28px] border border-border/80 p-5">
+      <div>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-true">Take a position</p>
+        <h2 className="text-lg font-semibold text-foreground">Choose your stake</h2>
+      </div>
 
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span>capacity</span>
@@ -127,47 +130,53 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
       )}
 
       {!publicKey ? (
-        <p className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
+        <p className="rounded-[22px] border border-border/70 bg-background/35 p-4 text-sm text-muted-foreground">
           Connect a wallet to take a position.
         </p>
       ) : poolFull ? (
-        <p className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
+        <p className="rounded-[22px] border border-border/70 bg-background/35 p-4 text-sm text-muted-foreground">
           Pool full — this market can&rsquo;t accept more stake.
         </p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
+          <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Quick stake</p>
+            <div className="flex flex-wrap gap-2">
             {QUICK_AMOUNTS.map((a) => (
               <button
                 key={a}
                 type="button"
                 onClick={() => setAmount(a.toString())}
-                className={`rounded-full border px-3 py-1 text-xs font-mono transition-colors ${
+                className={`min-h-10 rounded-full border px-3 py-1 text-xs font-mono transition-colors ${
                   Number(amount) === a
-                    ? "border-status-true text-status-true"
+                    ? "border-status-true bg-status-true/10 text-status-true"
                     : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                 }`}
               >
                 {a} SOL
               </button>
             ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              step="0.0001"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-28 font-mono"
-            />
-            <span className="text-xs text-muted-foreground">SOL</span>
-            <Button onClick={handleDeposit} disabled={deposit.isPending} className="ml-auto">
-              {deposit.isPending ? "confirming…" : "Take position"}
-            </Button>
+          <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your amount</p>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                step="0.0001"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="h-12 w-32 rounded-2xl border-border/80 bg-card/80 font-mono"
+              />
+              <span className="text-xs text-muted-foreground">SOL</span>
+              <Button onClick={handleDeposit} disabled={deposit.isPending} className="ml-auto min-h-12 rounded-full px-5">
+                {deposit.isPending ? "confirming…" : "Take position"}
+              </Button>
+            </div>
           </div>
 
-          <div className="border-t border-border pt-3">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">If this market settles…</p>
+          <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scenario preview</p>
             <PayoutScenarios amount={Number(amount)} {...props} />
           </div>
         </>

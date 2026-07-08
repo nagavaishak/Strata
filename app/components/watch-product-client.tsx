@@ -56,15 +56,17 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
   const legsSettled = data.legResults.filter((r) => r !== "unsettled").length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-6 py-12">
+    <div className="mx-auto max-w-[1400px] space-y-6 px-6 py-10">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Fixture {data.fixtureId.toString()}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Structured market · {data.numLegs} legs · <span className="font-mono">{truncateAddress(productAddress)}</span>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-status-true">Structured market</p>
+        <h1 className="text-4xl font-semibold tracking-tight">Fixture {data.fixtureId.toString()}</h1>
+        <p className="mt-2 text-sm leading-7 text-muted-foreground">
+          {data.numLegs} live conditions bundled into one payout ladder.{" "}
+          <span className="font-mono">{truncateAddress(productAddress)}</span>
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3 text-xs">
+      <div className="market-shell flex flex-wrap items-center gap-3 rounded-[24px] border border-border/80 px-4 py-3 text-xs">
         <span
           className={`h-1.5 w-1.5 rounded-full ${streamStatus?.live ? "glow-dot bg-status-true" : "bg-status-pending"}`}
         />
@@ -88,12 +90,12 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
         </span>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
         {/* left: conditions + payout ladder + trust blurb */}
         <section className="space-y-6">
-          <div className="space-y-3">
+          <div className="market-shell space-y-4 rounded-[28px] border border-border/80 p-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Conditions</h2>
+              <h2 className="text-base font-semibold text-foreground">Conditions</h2>
               <span className="text-xs text-muted-foreground">
                 <RollingNumber value={legsSettled} durationMs={300} className="font-mono" />/{data.numLegs} settled
               </span>
@@ -119,14 +121,20 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
             )}
           </div>
 
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Payout ladder</h2>
-            <div className="rounded-lg border border-border bg-card p-3">
+          <div className="market-shell space-y-3 rounded-[28px] border border-border/80 p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-foreground">Payout ladder</h2>
+              <span className="rounded-full border border-status-true/25 bg-status-true/10 px-3 py-1 text-xs font-semibold text-status-true">
+                Top tier {bpsToMultiplier(Math.max(...data.tiers.map((tier) => tier.payoutBps)))}
+              </span>
+            </div>
+            <div className="rounded-[24px] border border-border/70 bg-background/35 p-4">
               <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
             </div>
           </div>
 
-          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+          <div className="market-shell rounded-[28px] border border-border/80 p-5 text-sm text-muted-foreground">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Proof-backed settlement</p>
             Settlement is a permissionless CPI into TxLINE&rsquo;s on-chain proof verifier — anyone can
             call it, no oracle to trust.{" "}
             <a
@@ -153,7 +161,8 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
               legResults={data.legResults}
             />
           ) : (
-            <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+            <div className="market-shell rounded-[28px] border border-border/80 p-5 text-sm text-muted-foreground">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Settled market</p>
               <p>
                 total staked <span className="font-mono text-status-true">{formatSol(data.totalStake)} SOL</span>
               </p>
