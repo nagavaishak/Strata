@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAllProducts, useAllGeoProducts } from "@/lib/hooks/useAllProducts";
 import { TieredProductCard, GeoProductCard } from "@/components/product-card";
+import { dedupeByFixture } from "@/lib/dedupe-by-fixture";
 
 export default function WatchIndexPage() {
   const [address, setAddress] = useState("");
@@ -13,8 +14,8 @@ export default function WatchIndexPage() {
   const { data: tiered, isLoading: loadingTiered } = useAllProducts();
   const { data: geo, isLoading: loadingGeo } = useAllGeoProducts();
 
-  const openTiered = (tiered ?? []).filter((e) => e.data.status === "open");
-  const openGeo = (geo ?? []).filter((e) => e.data.status === "open");
+  const openTiered = dedupeByFixture((tiered ?? []).filter((e) => e.data.status === "open"));
+  const openGeo = dedupeByFixture((geo ?? []).filter((e) => e.data.status === "open"));
   const hasOpen = openTiered.length + openGeo.length > 0;
   const isLoading = loadingTiered || loadingGeo;
 

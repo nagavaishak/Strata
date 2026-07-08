@@ -4,6 +4,7 @@ import Link from "next/link";
 import { STRATA_PROGRAM_ID, TXORACLE_PROGRAM_ID } from "@/lib/constants";
 import { useAllProducts, useAllGeoProducts } from "@/lib/hooks/useAllProducts";
 import { TieredProductCard, GeoProductCard } from "@/components/product-card";
+import { dedupeByFixture } from "@/lib/dedupe-by-fixture";
 
 const FACTS = [
   { label: "settlement", value: "on-chain CPI" },
@@ -55,11 +56,10 @@ export default function Home() {
   const { data: tiered } = useAllProducts();
   const { data: geo } = useAllGeoProducts();
 
-  const featuredTiered = (tiered ?? [])
-    .slice()
+  const featuredTiered = dedupeByFixture(tiered ?? [])
     .sort((a, b) => (a.data.status === "open" ? -1 : 1) - (b.data.status === "open" ? -1 : 1))
     .slice(0, 3);
-  const featuredGeo = (geo ?? []).slice(0, 4 - featuredTiered.length);
+  const featuredGeo = dedupeByFixture(geo ?? []).slice(0, 4 - featuredTiered.length);
   const hasFeatured = featuredTiered.length + featuredGeo.length > 0;
 
   return (

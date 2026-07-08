@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAllProducts, useAllGeoProducts } from "@/lib/hooks/useAllProducts";
 import { TieredProductCard, GeoProductCard } from "@/components/product-card";
+import { dedupeByFixture } from "@/lib/dedupe-by-fixture";
 
 export default function VerifyIndexPage() {
   const [address, setAddress] = useState("");
@@ -13,8 +14,8 @@ export default function VerifyIndexPage() {
   const { data: tiered, isLoading: loadingTiered } = useAllProducts();
   const { data: geo, isLoading: loadingGeo } = useAllGeoProducts();
 
-  const settledTiered = (tiered ?? []).filter((e) => e.data.status === "settled");
-  const settledGeo = (geo ?? []).filter((e) => e.data.status === "settled");
+  const settledTiered = dedupeByFixture((tiered ?? []).filter((e) => e.data.status === "settled"));
+  const settledGeo = dedupeByFixture((geo ?? []).filter((e) => e.data.status === "settled"));
   const hasSettled = settledTiered.length + settledGeo.length > 0;
   const isLoading = loadingTiered || loadingGeo;
 
