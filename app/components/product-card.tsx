@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { statLabel } from "@/lib/stat-labels";
-import { formatSol, capacityFillFraction, bpsToMultiplier } from "@/lib/format";
+import { formatSol, capacityFillFraction, bpsToMultiplier, formatSeconds } from "@/lib/format";
 import { useCountdown } from "@/lib/hooks/useCountdown";
 import { RollingNumber } from "@/components/rolling-number";
 import { TierLadder } from "@/components/tier-ladder";
+import { deriveMarketStatus, MARKET_STATUS_LABEL, MARKET_STATUS_COLOR } from "@/lib/market-status";
 import type { ProductListEntry, GeoProductListEntry } from "@/lib/hooks/useAllProducts";
 
 function legLine(leg: {
@@ -40,21 +41,21 @@ function CapacityBar({ fraction }: { fraction: number }) {
 
 function CardShell({
   href,
-  live,
+  statusLabel,
+  statusColor,
   children,
 }: {
   href: string;
-  live?: boolean;
+  statusLabel: string;
+  statusColor: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
-      className="group relative flex flex-col gap-2.5 overflow-hidden rounded-lg border border-border bg-card p-3 transition-colors hover:border-foreground/30"
+      className="group relative flex flex-col gap-3 overflow-hidden rounded-lg border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-foreground/30"
     >
-      {live && (
-        <span className="glow-dot absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-status-true" />
-      )}
+      <span className={`absolute right-4 top-4 text-[11px] font-medium ${statusColor}`}>{statusLabel}</span>
       {children}
     </Link>
   );
@@ -72,16 +73,22 @@ export function TieredProductCard({
   const isOpen = data.status === "open";
   const href = isOpen ? `/watch/${address.toBase58()}` : `/verify/${address.toBase58()}`;
   const fill = capacityFillFraction(data.totalStake, data.maxCapacity);
+  const status = deriveMarketStatus({ status: data.status, closesAt: data.closesAt, live });
+  const topPayoutBps = data.tiers.reduce((max, t) => Math.max(max, t.payoutBps), 0);
 
   return (
-    <CardShell href={href} live={live}>
-      <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-        <span className="rounded-full border border-border px-2 py-0.5 text-status-true">tiered</span>
-        <span>fixture {data.fixtureId.toString()}</span>
+    <CardShell href={href} statusLabel={MARKET_STATUS_LABEL[status]} statusColor={MARKET_STATUS_COLOR[status]}>
+      <div>
+        <p className="text-sm font-semibold text-foreground">Fixture {data.fixtureId.toString()}</p>
+        <p className="text-xs text-muted-foreground">Structured market · {data.numLegs} legs</p>
       </div>
 
-      <div className="flex flex-col gap-1 font-mono text-xs text-foreground">
-        {data.legs.slice(0, 3).map((leg, i) => (
+      <p className="text-2xl font-semibold text-status-true">
+        up to {bpsToMultiplier(topPayoutBps)}
+      </p>
+
+      <div className="flex flex-col gap-1 text-xs text-foreground">
+        {data.legs.slice(0, 2).map((leg, i) => (
           <div key={i} className="flex items-center gap-1.5 truncate">
             <span
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${
@@ -95,25 +102,25 @@ export function TieredProductCard({
             <span className="truncate">{legLine(leg)}</span>
           </div>
         ))}
-        {data.legs.length > 3 && (
-          <span className="text-[10px] text-muted-foreground">+{data.legs.length - 3} more</span>
+        {data.legs.length > 2 && (
+          <span className="text-[10px] text-muted-foreground">+{data.legs.length - 2} more</span>
         )}
       </div>
 
       <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} compact />
 
       <div className="mt-auto flex flex-col gap-1.5">
-        <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <span>capacity</span>
-          <RollingNumber value={fill * 100} format={(n) => `${n.toFixed(0)}%`} />
+          <RollingNumber value={fill * 100} format={(n) => `${n.toFixed(0)}%`} className="font-mono" />
         </div>
         <CapacityBar fraction={fill} />
-        <div className="flex items-center justify-between font-mono text-[10px]">
-          <span className="text-status-true">{formatSol(data.totalStake)} SOL staked</span>
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="font-mono text-status-true">{formatSol(data.totalStake)} SOL staked</span>
           <span className="text-muted-foreground">
             {isOpen
               ? secondsLeft > 0
-                ? `closes in ${Math.ceil(secondsLeft / 60)}m`
+                ? `closes in ${formatSeconds(secondsLeft)}`
                 : "awaiting settlement"
               : `settled · ${bpsToMultiplier(data.finalPayoutBps)}`}
           </span>
@@ -135,33 +142,34 @@ export function GeoProductCard({
   const isOpen = data.status === "open";
   const href = isOpen ? `/watch/geo/${address.toBase58()}` : `/verify/geo/${address.toBase58()}`;
   const fill = capacityFillFraction(data.totalStake, data.maxCapacity);
+  const status = deriveMarketStatus({ status: data.status, closesAt: data.closesAt, live });
 
   return (
-    <CardShell href={href} live={live}>
-      <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-        <span className="rounded-full border border-border px-2 py-0.5 text-status-pending">
-          exact-outcome
-        </span>
-        <span>fixture {data.fixtureId.toString()}</span>
+    <CardShell href={href} statusLabel={MARKET_STATUS_LABEL[status]} statusColor={MARKET_STATUS_COLOR[status]}>
+      <div>
+        <p className="text-sm font-semibold text-foreground">Fixture {data.fixtureId.toString()}</p>
+        <p className="text-xs text-muted-foreground">Exact-outcome market</p>
       </div>
 
-      <p className="font-mono text-xs text-foreground">
+      <p className="text-2xl font-semibold text-status-true">up to {bpsToMultiplier(data.payoutBpsIfTrue)}</p>
+
+      <p className="text-xs text-foreground">
         predict {statLabel(data.statKeyA)} = {data.predictionA}, {statLabel(data.statKeyB)} ={" "}
         {data.predictionB}
       </p>
 
       <div className="mt-auto flex flex-col gap-1.5">
-        <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <span>capacity</span>
-          <RollingNumber value={fill * 100} format={(n) => `${n.toFixed(0)}%`} />
+          <RollingNumber value={fill * 100} format={(n) => `${n.toFixed(0)}%`} className="font-mono" />
         </div>
         <CapacityBar fraction={fill} />
-        <div className="flex items-center justify-between font-mono text-[10px]">
-          <span className="text-status-true">{formatSol(data.totalStake)} SOL staked</span>
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="font-mono text-status-true">{formatSol(data.totalStake)} SOL staked</span>
           <span className="text-muted-foreground">
             {isOpen
               ? secondsLeft > 0
-                ? `closes in ${Math.ceil(secondsLeft / 60)}m`
+                ? `closes in ${formatSeconds(secondsLeft)}`
                 : "awaiting settlement"
               : `settled · ${data.finalPayoutBps > 0 ? bpsToMultiplier(data.finalPayoutBps) : "0x"}`}
           </span>

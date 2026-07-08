@@ -44,7 +44,7 @@ export default function WatchIndexPage() {
 
       {!isLoading && !hasOpen && (
         <p className="font-mono text-sm text-muted-foreground">
-          No open products right now — create one on the build screen first.
+          No open markets right now — create one first.
         </p>
       )}
 

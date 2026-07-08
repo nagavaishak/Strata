@@ -51,12 +51,12 @@ export default function BuildGeoPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-6 py-12">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">00 Build — exact outcome</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Create — exact outcome</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Predict two stats exactly (e.g. the final scoreline) via TxLINE&rsquo;s new
           validate_stat_v2 geometric distance predicate — not a threshold bet, a real
           exact-outcome market.{" "}
-          <Link href="/build" className="underline">
+          <Link href="/create" className="underline">
             Back to the tiered builder
           </Link>
         </p>

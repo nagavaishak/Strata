@@ -37,13 +37,15 @@ const STEPS = [
   },
 ];
 
-export function HowItWorksDialog() {
+export function HowItWorksDialog({ trigger }: { trigger?: React.ReactNode }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="font-mono text-xs">
-          How it works
-        </Button>
+        {trigger ?? (
+          <Button variant="outline" size="sm">
+            How it works
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>

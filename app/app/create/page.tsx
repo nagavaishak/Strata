@@ -50,11 +50,11 @@ export default function BuildPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-6 py-12">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">00 Build a product</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Create a market</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Combine up to 5 stat conditions into a tiered payout table. Not a yes/no bet —
           the more legs come true, the higher the payout tier.{" "}
-          <Link href="/build/geo" className="underline">
+          <Link href="/create/geo" className="underline">
             Or predict an exact outcome →
           </Link>
         </p>
