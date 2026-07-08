@@ -32,6 +32,30 @@ function decodeEnumKey<T extends string>(value: Record<string, unknown>): T {
   return Object.keys(value)[0] as T;
 }
 
+/** Shared decode — used by both the single-fetch hook below and useAllGeoProducts' list fetch. */
+export function decodeGeoProduct(account: any): GeoProductState {
+  return {
+    fixtureId: BigInt(account.fixtureId.toString()),
+    nonce: account.nonce,
+    statKeyA: account.statKeyA,
+    statKeyB: account.statKeyB,
+    predictionA: account.predictionA,
+    predictionB: account.predictionB,
+    distanceThreshold: account.distanceThreshold,
+    distanceComparison: decodeEnumKey<Comparison>(account.distanceComparison),
+    payoutBpsIfTrue: account.payoutBpsIfTrue,
+    status: decodeEnumKey<ProductStatus>(account.status),
+    closesAt: BigInt(account.closesAt.toString()),
+    settleDeadline: BigInt(account.settleDeadline.toString()),
+    totalStake: BigInt(account.totalStake.toString()),
+    finalPayoutBps: account.finalPayoutBps,
+    writer: account.writer as PublicKey,
+    writerPool: account.writerPool as PublicKey,
+    maxCapacity: BigInt(account.maxCapacity.toString()),
+    collateralLocked: BigInt(account.collateralLocked.toString()),
+  };
+}
+
 export function useGeoProduct(productAddress: PublicKey | null) {
   const program = useStrataProgram();
 
@@ -41,26 +65,7 @@ export function useGeoProduct(productAddress: PublicKey | null) {
     queryFn: async () => {
       if (!productAddress) return null;
       const account = await (program.account as any).geoProduct.fetch(productAddress);
-      return {
-        fixtureId: BigInt(account.fixtureId.toString()),
-        nonce: account.nonce,
-        statKeyA: account.statKeyA,
-        statKeyB: account.statKeyB,
-        predictionA: account.predictionA,
-        predictionB: account.predictionB,
-        distanceThreshold: account.distanceThreshold,
-        distanceComparison: decodeEnumKey<Comparison>(account.distanceComparison),
-        payoutBpsIfTrue: account.payoutBpsIfTrue,
-        status: decodeEnumKey<ProductStatus>(account.status),
-        closesAt: BigInt(account.closesAt.toString()),
-        settleDeadline: BigInt(account.settleDeadline.toString()),
-        totalStake: BigInt(account.totalStake.toString()),
-        finalPayoutBps: account.finalPayoutBps,
-        writer: account.writer as PublicKey,
-        writerPool: account.writerPool as PublicKey,
-        maxCapacity: BigInt(account.maxCapacity.toString()),
-        collateralLocked: BigInt(account.collateralLocked.toString()),
-      };
+      return decodeGeoProduct(account);
     },
   });
 }

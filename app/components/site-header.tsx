@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { StatusBadge } from "./status-badge";
+import { HowItWorksDialog } from "./how-it-works-dialog";
 
 // wallet-adapter-react-ui's button reads browser wallet state, must not SSR.
 const WalletMultiButton = dynamic(
@@ -59,6 +60,15 @@ export function SiteHeader() {
         </nav>
       </div>
       <div className="flex items-center gap-3">
+        <div className="hidden items-center gap-3 font-mono text-xs text-muted-foreground md:flex">
+          <Link href="/markets" className="hover:text-foreground">
+            Markets
+          </Link>
+          <Link href="/positions" className="hover:text-foreground">
+            Positions
+          </Link>
+        </div>
+        <HowItWorksDialog />
         <StatusBadge />
         <WalletMultiButton />
       </div>
