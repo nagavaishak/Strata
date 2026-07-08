@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useGeoProduct } from "@/lib/hooks/useGeoProduct";
 import { useSettleGeoProduct } from "@/lib/hooks/useGeoProductActions";
+import { TakePositionPanel } from "@/components/take-position-panel";
 import { STRATA_PROGRAM_ID } from "@/lib/constants";
 
 function comparisonSymbol(c: string) {
@@ -56,6 +57,16 @@ export function WatchGeoProductClient({ productAddress }: { productAddress: stri
       </div>
 
       {settle.isError && <p className="font-mono text-xs text-status-false">{(settle.error as Error).message}</p>}
+
+      {data.status === "open" && (
+        <TakePositionPanel
+          kind="geo"
+          product={geoProduct}
+          totalStake={data.totalStake}
+          maxCapacity={data.maxCapacity}
+          payoutBpsIfTrue={data.payoutBpsIfTrue}
+        />
+      )}
 
       {data.status === "settled" && (
         <div

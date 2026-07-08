@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useProduct } from "@/lib/hooks/useProduct";
 import { LegStatusList } from "@/components/leg-status-list";
 import { TierLadder } from "@/components/tier-ladder";
+import { TakePositionPanel } from "@/components/take-position-panel";
 import { RollingNumber } from "@/components/rolling-number";
 import { useFinalizeProduct } from "@/lib/hooks/useSettlement";
 import { useCountdown } from "@/lib/hooks/useCountdown";
@@ -120,15 +121,29 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
         {/* right: live payout tier ladder — the money-shot: watch the highlighted tier climb
             as real legs settle */}
         <section className="space-y-3">
-          <h2 className="font-mono text-sm text-muted-foreground">your position</h2>
-          <div className="rounded-lg border border-border bg-card p-3">
-            <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
-          </div>
-          <div className="rounded-lg border border-border bg-card p-3 font-mono text-xs text-muted-foreground">
-            <p>
-              total staked <span className="text-status-true">{formatSol(data.totalStake)} SOL</span>
-            </p>
-          </div>
+          {data.status === "open" ? (
+            <TakePositionPanel
+              kind="tiered"
+              product={product}
+              totalStake={data.totalStake}
+              maxCapacity={data.maxCapacity}
+              tiers={data.tiers}
+              numLegs={data.numLegs}
+              legResults={data.legResults}
+            />
+          ) : (
+            <>
+              <h2 className="font-mono text-sm text-muted-foreground">payout tiers</h2>
+              <div className="rounded-lg border border-border bg-card p-3">
+                <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
+              </div>
+              <div className="rounded-lg border border-border bg-card p-3 font-mono text-xs text-muted-foreground">
+                <p>
+                  total staked <span className="text-status-true">{formatSol(data.totalStake)} SOL</span>
+                </p>
+              </div>
+            </>
+          )}
         </section>
       </div>
 
