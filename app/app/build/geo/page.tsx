@@ -49,7 +49,7 @@ export default function BuildGeoPage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 px-6 py-12">
+    <div className="mx-auto max-w-3xl space-y-8 px-6 py-12">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">00 Build — exact outcome</h1>
         <p className="mt-1 text-sm text-muted-foreground">

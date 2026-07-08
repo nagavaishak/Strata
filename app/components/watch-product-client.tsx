@@ -56,7 +56,7 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
   const legsSettled = data.legResults.filter((r) => r !== "unsettled").length;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-6 py-12">
+    <div className="mx-auto max-w-6xl space-y-6 px-6 py-12">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">01 Watch — settlement terminal</h1>
         <p className="mt-1 font-mono text-sm text-muted-foreground">

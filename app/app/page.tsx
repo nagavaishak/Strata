@@ -63,7 +63,7 @@ export default function Home() {
   const hasFeatured = featuredTiered.length + featuredGeo.length > 0;
 
   return (
-    <div className="relative mx-auto flex max-w-3xl flex-1 flex-col gap-16 px-6 py-14">
+    <div className="relative mx-auto flex max-w-5xl flex-1 flex-col gap-16 px-6 py-14">
       {/* what */}
       <div className="relative flex flex-col gap-6">
         <div className="bg-hero-glow pointer-events-none absolute -inset-x-24 -top-24 -z-10 h-[36rem]" />
@@ -118,7 +118,7 @@ export default function Home() {
               all markets →
             </Link>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {featuredTiered.map((entry) => (
               <TieredProductCard key={entry.address.toBase58()} entry={entry} />
             ))}

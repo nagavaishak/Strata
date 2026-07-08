@@ -20,7 +20,7 @@ export default function VerifyIndexPage() {
   const isLoading = loadingTiered || loadingGeo;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-6 py-12">
+    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-12">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">02 Verify a settlement</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -32,7 +32,7 @@ export default function VerifyIndexPage() {
       {isLoading && <p className="font-mono text-sm text-muted-foreground">loading…</p>}
 
       {!isLoading && hasSettled && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {settledTiered.map((entry) => (
             <TieredProductCard key={entry.address.toBase58()} entry={entry} />
           ))}

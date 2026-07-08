@@ -9,7 +9,7 @@ export default function PositionsPage() {
   const { data: positions, isLoading } = useMyPositions();
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-24">
+    <div className="mx-auto max-w-3xl px-6 py-24">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Positions</h1>
         <p className="mt-1 text-sm text-muted-foreground">
