@@ -16,7 +16,7 @@ export function StatusBadge() {
   const { data: pool, isLoading, isError } = useWriterPool();
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-mono">
+    <div className="hidden items-center gap-2 rounded-full border border-border/80 bg-card/85 px-3 py-2 text-xs font-mono xl:inline-flex">
       <span
         className={`h-1.5 w-1.5 rounded-full ${
           isError
@@ -26,7 +26,7 @@ export function StatusBadge() {
               : "glow-dot bg-status-true"
         }`}
       />
-      <span className="text-muted-foreground">devnet</span>
+      <span className="text-muted-foreground">DEVNET</span>
       <span className="text-border">·</span>
       <a
         href={`https://explorer.solana.com/address/${STRATA_PROGRAM_ID.toBase58()}?cluster=devnet`}
@@ -40,11 +40,11 @@ export function StatusBadge() {
         <>
           <span className="text-border">·</span>
           <span title="pool reserved (open products' worst case)">
-            reserved {(Number(pool.reserved) / 1e9).toFixed(4)}
+            res {(Number(pool.reserved) / 1e9).toFixed(3)}
           </span>
           <span className="text-border">/</span>
           <span title="pool owed (settled, unclaimed)">
-            owed {(Number(pool.owed) / 1e9).toFixed(4)}
+            owed {(Number(pool.owed) / 1e9).toFixed(3)}
           </span>
         </>
       )}

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { Search } from "lucide-react";
 import { StatusBadge } from "./status-badge";
 import { HowItWorksDialog } from "./how-it-works-dialog";
 
@@ -14,7 +15,7 @@ const WalletMultiButton = dynamic(
 );
 
 const NAV_ITEM_CLASS =
-  "group relative flex items-center overflow-hidden rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors hover:text-foreground";
+  "group relative flex min-h-10 items-center overflow-hidden rounded-full px-3.5 py-2 text-sm font-semibold tracking-tight transition-colors hover:text-foreground";
 
 function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
   return (
@@ -52,38 +53,63 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="flex items-center justify-between border-b border-border px-4 py-3">
-      <div className="flex items-center gap-6">
-        <Link href="/" className="text-base font-semibold tracking-tight">
-          Strata
-        </Link>
-        <nav className="hidden items-center gap-1 sm:flex">
-          <NavLink href="/" label="Home" active={pathname === "/"} />
-          <NavLink href="/markets" label="Explore" active={pathname === "/markets"} />
-          <Suspense fallback={<NavLink href="/markets?filter=live" label="Live" active={false} />}>
-            <LiveNavLink />
-          </Suspense>
-          <NavLink href="/positions" label="Portfolio" active={pathname.startsWith("/positions")} />
-          <HowItWorksDialog
-            trigger={
-              <button type="button" className={`${NAV_ITEM_CLASS} text-muted-foreground`}>
-                How It Works
-              </button>
-            }
-          />
-        </nav>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="hidden items-center gap-3 text-xs text-muted-foreground md:flex">
-          <Link href="/create" className="hover:text-foreground">
-            Create Market
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/92 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-3">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-2 text-base font-semibold tracking-tight">
+            <span className="text-3xl leading-none text-status-true">S</span>
+            <span className="text-xl font-bold text-status-true">Strata</span>
           </Link>
-          <Link href="/about" className="hover:text-foreground">
-            About
-          </Link>
+          <nav className="hidden items-center gap-1 lg:flex">
+            <NavLink href="/markets" label="Markets" active={pathname === "/markets"} />
+            <NavLink href="/" label="Home" active={pathname === "/"} />
+            <Suspense fallback={<NavLink href="/markets?filter=live" label="Live" active={false} />}>
+              <LiveNavLink />
+            </Suspense>
+            <NavLink href="/positions" label="Portfolio" active={pathname.startsWith("/positions")} />
+            <NavLink href="/about" label="Research" active={pathname.startsWith("/about")} />
+            <HowItWorksDialog
+              trigger={
+                <button type="button" className={`${NAV_ITEM_CLASS} text-muted-foreground`}>
+                  How it works
+                </button>
+              }
+            />
+          </nav>
         </div>
-        <StatusBadge />
-        <WalletMultiButton />
+        <div className="flex flex-1 items-center justify-end gap-3">
+          <div className="hidden max-w-[460px] flex-1 items-center gap-3 rounded-full border border-border/80 bg-card/80 px-4 py-3 xl:flex">
+            <Search className="size-4 text-muted-foreground" aria-hidden="true" />
+            <input
+              aria-label="Search markets"
+              className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+              placeholder="Search fixture, market type, or status"
+            />
+          </div>
+          <div className="hidden items-center gap-3 text-xs text-muted-foreground md:flex">
+            <Link href="/create" className="rounded-full px-2 py-1 hover:text-foreground">
+              Create Market
+            </Link>
+          </div>
+          <StatusBadge />
+          <WalletMultiButton />
+        </div>
+      </div>
+      <div className="border-t border-border/70">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-2 overflow-x-auto px-4 py-2 text-sm [&::-webkit-scrollbar]:hidden">
+          {["Trending", "Sports", "Live Now", "World Cup", "Structured", "Exact Outcome", "Props"].map((tab) => (
+            <span
+              key={tab}
+              className={`shrink-0 rounded-full px-3 py-1.5 ${
+                tab === "Trending"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab}
+            </span>
+          ))}
+        </div>
       </div>
     </header>
   );
