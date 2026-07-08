@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { STRATA_PROGRAM_ID, TXORACLE_PROGRAM_ID } from "@/lib/constants";
+import { useAllProducts, useAllGeoProducts } from "@/lib/hooks/useAllProducts";
+import { TieredProductCard, GeoProductCard } from "@/components/product-card";
 
 const FACTS = [
   { label: "settlement", value: "on-chain CPI" },
@@ -48,10 +52,20 @@ const DESTINATIONS = [
 ];
 
 export default function Home() {
+  const { data: tiered } = useAllProducts();
+  const { data: geo } = useAllGeoProducts();
+
+  const featuredTiered = (tiered ?? [])
+    .slice()
+    .sort((a, b) => (a.data.status === "open" ? -1 : 1) - (b.data.status === "open" ? -1 : 1))
+    .slice(0, 3);
+  const featuredGeo = (geo ?? []).slice(0, 4 - featuredTiered.length);
+  const hasFeatured = featuredTiered.length + featuredGeo.length > 0;
+
   return (
-    <div className="relative mx-auto flex max-w-3xl flex-1 flex-col gap-24 px-6 py-24">
+    <div className="relative mx-auto flex max-w-3xl flex-1 flex-col gap-16 px-6 py-14">
       {/* what */}
-      <div className="relative flex flex-col gap-10">
+      <div className="relative flex flex-col gap-6">
         <div className="bg-hero-glow pointer-events-none absolute -inset-x-24 -top-24 -z-10 h-[36rem]" />
 
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-mono text-muted-foreground">
@@ -94,6 +108,26 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      {/* live markets strip — real accounts, not mockup cards */}
+      {hasFeatured && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-mono text-sm text-muted-foreground">live on devnet, right now</h2>
+            <Link href="/markets" className="font-mono text-xs text-muted-foreground hover:text-foreground hover:underline">
+              all markets →
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {featuredTiered.map((entry) => (
+              <TieredProductCard key={entry.address.toBase58()} entry={entry} />
+            ))}
+            {featuredGeo.map((entry) => (
+              <GeoProductCard key={entry.address.toBase58()} entry={entry} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* why */}
       <div id="why" className="flex scroll-mt-20 flex-col gap-8">
