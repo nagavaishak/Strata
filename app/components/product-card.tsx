@@ -53,9 +53,9 @@ function CardShell({
   return (
     <Link
       href={href}
-      className="group relative flex flex-col gap-3 overflow-hidden rounded-lg border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-foreground/30"
+      className="market-shell group relative flex min-h-[280px] flex-col gap-4 overflow-hidden rounded-[26px] border border-border/80 p-5 transition-all hover:-translate-y-1 hover:border-foreground/30"
     >
-      <span className={`absolute right-4 top-4 text-[11px] font-medium ${statusColor}`}>{statusLabel}</span>
+      <span className={`absolute right-5 top-5 text-[11px] font-semibold uppercase tracking-[0.18em] ${statusColor}`}>{statusLabel}</span>
       {children}
     </Link>
   );
@@ -79,15 +79,23 @@ export function TieredProductCard({
   return (
     <CardShell href={href} statusLabel={MARKET_STATUS_LABEL[status]} statusColor={MARKET_STATUS_COLOR[status]}>
       <div>
-        <p className="text-sm font-semibold text-foreground">Fixture {data.fixtureId.toString()}</p>
-        <p className="text-xs text-muted-foreground">Structured market · {data.numLegs} legs</p>
+        <p className="pr-16 text-lg font-semibold tracking-tight text-foreground">Fixture {data.fixtureId.toString()}</p>
+        <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Structured market · {data.numLegs} legs</p>
       </div>
 
-      <p className="text-2xl font-semibold text-status-true">
-        up to {bpsToMultiplier(topPayoutBps)}
-      </p>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Top payout</p>
+          <p className="mt-1 text-3xl font-semibold tracking-tight text-status-true">Up to {bpsToMultiplier(topPayoutBps)}</p>
+        </div>
+        <div className="rounded-full border border-status-true/25 bg-status-true/10 px-3 py-1 text-xs font-semibold text-status-true">
+          {formatSol(data.totalStake)} SOL
+        </div>
+      </div>
 
-      <div className="flex flex-col gap-1 text-xs text-foreground">
+      <div className="rounded-3xl border border-border/70 bg-background/35 p-4">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Conditions</div>
+      <div className="flex flex-col gap-2 text-xs text-foreground">
         {data.legs.slice(0, 2).map((leg, i) => (
           <div key={i} className="flex items-center gap-1.5 truncate">
             <span
@@ -106,8 +114,12 @@ export function TieredProductCard({
           <span className="text-[10px] text-muted-foreground">+{data.legs.length - 2} more</span>
         )}
       </div>
+      </div>
 
-      <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} compact />
+      <div className="rounded-3xl border border-border/70 bg-background/35 p-4">
+        <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Payout ladder</div>
+        <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} compact />
+      </div>
 
       <div className="mt-auto flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
@@ -116,7 +128,7 @@ export function TieredProductCard({
         </div>
         <CapacityBar fraction={fill} />
         <div className="flex items-center justify-between text-[10px]">
-          <span className="font-mono text-status-true">{formatSol(data.totalStake)} SOL staked</span>
+          <span className="text-muted-foreground">capacity used</span>
           <span className="text-muted-foreground">
             {isOpen
               ? secondsLeft > 0
@@ -147,16 +159,27 @@ export function GeoProductCard({
   return (
     <CardShell href={href} statusLabel={MARKET_STATUS_LABEL[status]} statusColor={MARKET_STATUS_COLOR[status]}>
       <div>
-        <p className="text-sm font-semibold text-foreground">Fixture {data.fixtureId.toString()}</p>
-        <p className="text-xs text-muted-foreground">Exact-outcome market</p>
+        <p className="pr-16 text-lg font-semibold tracking-tight text-foreground">Fixture {data.fixtureId.toString()}</p>
+        <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Exact-outcome market</p>
       </div>
 
-      <p className="text-2xl font-semibold text-status-true">up to {bpsToMultiplier(data.payoutBpsIfTrue)}</p>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Exact payout</p>
+          <p className="mt-1 text-3xl font-semibold tracking-tight text-status-true">Up to {bpsToMultiplier(data.payoutBpsIfTrue)}</p>
+        </div>
+        <div className="rounded-full border border-status-true/25 bg-status-true/10 px-3 py-1 text-xs font-semibold text-status-true">
+          {formatSol(data.totalStake)} SOL
+        </div>
+      </div>
 
-      <p className="text-xs text-foreground">
-        predict {statLabel(data.statKeyA)} = {data.predictionA}, {statLabel(data.statKeyB)} ={" "}
-        {data.predictionB}
-      </p>
+      <div className="rounded-3xl border border-border/70 bg-background/35 p-4">
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Prediction</div>
+        <p className="text-sm leading-6 text-foreground">
+          predict {statLabel(data.statKeyA)} = <span className="font-mono">{data.predictionA}</span>, {statLabel(data.statKeyB)} ={" "}
+          <span className="font-mono">{data.predictionB}</span>
+        </p>
+      </div>
 
       <div className="mt-auto flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
@@ -165,7 +188,7 @@ export function GeoProductCard({
         </div>
         <CapacityBar fraction={fill} />
         <div className="flex items-center justify-between text-[10px]">
-          <span className="font-mono text-status-true">{formatSol(data.totalStake)} SOL staked</span>
+          <span className="text-muted-foreground">capacity used</span>
           <span className="text-muted-foreground">
             {isOpen
               ? secondsLeft > 0

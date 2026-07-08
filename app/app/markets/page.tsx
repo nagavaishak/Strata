@@ -73,37 +73,47 @@ function MarketsPageInner() {
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Explore markets</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Every structured sports market on Strata, fetched directly from devnet — nothing
-          here is curated or hidden.
-        </p>
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-status-true">Marketplace</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Explore markets</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+            Browse every structured and exact-outcome market on Strata. Real markets, real capacity,
+            real payout ladders — all fetched straight from devnet.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-sm">
+          {["Trending", "Live now", "Structured", "Exact outcome", "Closing soon"].map((item) => (
+            <span key={item} className="market-chip shrink-0 rounded-full px-3 py-1.5 text-muted-foreground">
+              {item}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* live stat strip — every number here is real, computed from already-fetched accounts */}
-      <div className="mb-6 grid grid-cols-2 gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-4">
+      <div className="market-shell mb-6 grid grid-cols-2 gap-3 rounded-[28px] border border-border/80 p-5 sm:grid-cols-4">
         <div>
-          <p className="text-[10px] text-muted-foreground">total staked</p>
-          <p className="font-mono text-lg text-status-true">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">total staked</p>
+          <p className="font-mono text-2xl text-status-true">
             <RollingNumber value={Number(formatSol(totalStaked))} format={(n) => n.toFixed(4)} /> SOL
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-muted-foreground">open markets</p>
-          <p className="font-mono text-lg">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">open markets</p>
+          <p className="font-mono text-2xl">
             <RollingNumber value={openCount} />
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-muted-foreground">live now</p>
-          <p className="font-mono text-lg text-status-true">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">live now</p>
+          <p className="font-mono text-2xl text-status-true">
             <RollingNumber value={liveCount} />
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-muted-foreground">pool reserved / owed</p>
-          <p className="font-mono text-lg">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">pool reserved / owed</p>
+          <p className="font-mono text-2xl">
             {pool ? (
               <>
                 {formatSol(pool.reserved)} / {formatSol(pool.owed)}
@@ -117,7 +127,7 @@ function MarketsPageInner() {
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-          <TabsList>
+          <TabsList className="rounded-full border border-border/80 bg-card/80 p-1">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="live">Live</TabsTrigger>
             <TabsTrigger value="open">Open</TabsTrigger>
@@ -125,7 +135,7 @@ function MarketsPageInner() {
           </TabsList>
         </Tabs>
         <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
-          <TabsList>
+          <TabsList className="rounded-full border border-border/80 bg-card/80 p-1">
             <TabsTrigger value="all">All types</TabsTrigger>
             <TabsTrigger value="tiered">Tiered</TabsTrigger>
             <TabsTrigger value="geo">Exact</TabsTrigger>
@@ -145,7 +155,7 @@ function MarketsPageInner() {
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredTiered.map((entry, i) => (
           <div
             key={entry.address.toBase58()}
