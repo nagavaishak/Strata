@@ -8,47 +8,107 @@ const FACTS = [
   { label: "geometric", value: "exact-outcome" },
 ];
 
+const WHY_POINTS = [
+  {
+    index: "01",
+    title: "Tiered, multi-leg payouts — not a coin flip",
+    body: "Every other submission on this track is a single-predicate yes/no bet. Strata bundles up to 5 stat conditions into one instrument with a real payout tier table, the way a structured note or parametric insurance product actually works.",
+  },
+  {
+    index: "02",
+    title: "A real on-chain CPI, not a trusted feeder",
+    body: "Settlement calls TxLINE's own validate_stat / validate_stat_v2 program on-chain and verifies its Merkle proof. Nobody posts a result and asks you to trust them — the program checks the proof itself, permissionlessly, callable by anyone.",
+  },
+  {
+    index: "03",
+    title: "Proven live, not a historical replay",
+    body: "A real buyer deposit was made before the underlying match data existed, then settled only once TxLINE sealed a fresh batch minutes later. The losing outcome is part of the proof — nothing was rigged to guarantee a win.",
+  },
+];
+
+const DESTINATIONS = [
+  {
+    index: "00",
+    label: "Build",
+    href: "/build",
+    body: "Construct a tiered multi-leg product, or predict an exact outcome with the geometric engine.",
+  },
+  {
+    index: "01",
+    label: "Watch",
+    href: "/watch",
+    body: "See a product's legs settle live, one real on-chain proof at a time.",
+  },
+  {
+    index: "02",
+    label: "Verify",
+    href: "/verify/6UNaWnAMpjHHxzC8KD78wYekjVwNNHKVMnm1rf5TiG9s",
+    body: "Skip the setup — open a real settled product and re-derive its payout from on-chain data alone.",
+  },
+];
+
 export default function Home() {
   return (
-    <div className="mx-auto flex max-w-3xl flex-1 flex-col justify-center gap-10 px-6 py-24">
-      <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-mono text-muted-foreground">
-        <span className="h-1.5 w-1.5 rounded-full bg-status-true" />
-        structured settlement · not a coin flip
+    <div className="mx-auto flex max-w-3xl flex-1 flex-col gap-24 px-6 py-24">
+      {/* what */}
+      <div className="flex flex-col gap-10">
+        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-mono text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-status-true" />
+          structured settlement · not a coin flip
+        </div>
+
+        <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+          Multi-leg, tiered payouts,
+          <br />
+          <span className="text-muted-foreground">settled trustlessly on-chain.</span>
+        </h1>
+
+        <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
+          Strata turns sports-stat conditions into structured, tiered payoffs.
+          Settlement is a permissionless CPI into TxLINE&rsquo;s own on-chain proof
+          verifier — no oracle to trust, no self-attested results.
+        </p>
+
+        <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border pt-4 font-mono text-xs text-muted-foreground">
+          {FACTS.map((fact) => (
+            <span key={fact.label}>
+              {fact.label} <span className="text-status-true">{fact.value}</span>
+            </span>
+          ))}
+        </div>
       </div>
 
-      <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-        Multi-leg, tiered payouts,
-        <br />
-        <span className="text-muted-foreground">settled trustlessly on-chain.</span>
-      </h1>
-
-      <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-        Strata turns sports-stat conditions into structured, tiered payoffs.
-        Settlement is a permissionless CPI into TxLINE&rsquo;s own on-chain proof
-        verifier — no oracle to trust, no self-attested results.
-      </p>
-
-      <div className="flex flex-wrap gap-3">
-        <Link
-          href="/build"
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground"
-        >
-          00 Build a product →
-        </Link>
-        <Link
-          href="/verify"
-          className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium hover:bg-accent"
-        >
-          02 Verify a settlement
-        </Link>
+      {/* why */}
+      <div className="flex flex-col gap-8">
+        <h2 className="font-mono text-sm text-muted-foreground">why this, not another prediction market</h2>
+        <div className="grid gap-6 sm:grid-cols-3">
+          {WHY_POINTS.map((point) => (
+            <div key={point.index} className="flex flex-col gap-2">
+              <span className="font-mono text-xs text-border">{point.index}</span>
+              <h3 className="text-sm font-medium leading-snug">{point.title}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">{point.body}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border pt-4 font-mono text-xs text-muted-foreground">
-        {FACTS.map((fact) => (
-          <span key={fact.label}>
-            {fact.label} <span className="text-status-true">{fact.value}</span>
-          </span>
-        ))}
+      {/* where to go */}
+      <div className="flex flex-col gap-6">
+        <h2 className="font-mono text-sm text-muted-foreground">where to go</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {DESTINATIONS.map((dest) => (
+            <Link
+              key={dest.href}
+              href={dest.href}
+              className="group flex flex-col gap-2 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/30"
+            >
+              <span className="font-mono text-xs text-muted-foreground">
+                {dest.index} <span className="text-foreground group-hover:underline">{dest.label} →</span>
+              </span>
+              <p className="text-sm leading-relaxed text-muted-foreground">{dest.body}</p>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="font-mono text-xs text-muted-foreground">
