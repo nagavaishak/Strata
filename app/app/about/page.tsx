@@ -23,10 +23,10 @@ const LINKS = [
 
 export default function AboutPage() {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-24">
+    <div className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-24">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">05 About</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           Strata was built for Superteam Ireland&rsquo;s World Cup Hackathon —
           Track 1: Prediction Markets and Settlement. It&rsquo;s a structured
           settlement engine: multi-leg tiered payouts and exact-outcome
@@ -37,7 +37,7 @@ export default function AboutPage() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {LINKS.map((link) => (
           <a
             key={link.href}

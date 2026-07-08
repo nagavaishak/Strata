@@ -62,50 +62,88 @@ export default function Home() {
   const featuredGeo = dedupeByFixture(geo ?? []).slice(0, 4 - featuredTiered.length);
   const hasFeatured = featuredTiered.length + featuredGeo.length > 0;
 
+  const allTiered = tiered ?? [];
+  const allGeo = geo ?? [];
+  const openCount =
+    allTiered.filter((e) => e.data.status === "open").length +
+    allGeo.filter((e) => e.data.status === "open").length;
+  const settledCount =
+    allTiered.filter((e) => e.data.status === "settled").length +
+    allGeo.filter((e) => e.data.status === "settled").length;
+  const totalStaked =
+    allTiered.reduce((sum, e) => sum + e.data.totalStake, 0n) +
+    allGeo.reduce((sum, e) => sum + e.data.totalStake, 0n);
+
   return (
-    <div className="relative mx-auto flex max-w-5xl flex-1 flex-col gap-16 px-6 py-14">
+    <div className="relative mx-auto flex max-w-[1400px] flex-1 flex-col gap-16 px-6 py-14">
       {/* what */}
-      <div className="relative flex flex-col gap-6">
+      <div className="relative grid gap-12 lg:grid-cols-[1.15fr_1fr] lg:items-center">
         <div className="bg-hero-glow pointer-events-none absolute -inset-x-24 -top-24 -z-10 h-[36rem]" />
 
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-mono text-muted-foreground">
-          <span className="glow-dot h-1.5 w-1.5 rounded-full bg-status-true" />
-          structured settlement · not a coin flip
+        <div className="flex flex-col gap-6">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-mono text-muted-foreground">
+            <span className="glow-dot h-1.5 w-1.5 rounded-full bg-status-true" />
+            structured settlement · not a coin flip
+          </div>
+
+          <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+            Multi-leg, tiered payouts,
+            <br />
+            <span className="text-gradient">settled trustlessly on-chain.</span>
+          </h1>
+
+          <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
+            Strata turns sports-stat conditions into structured, tiered payoffs.
+            Settlement is a permissionless CPI into TxLINE&rsquo;s own on-chain proof
+            verifier — no oracle to trust, no self-attested results.
+          </p>
+
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/build"
+              className="btn-gradient inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
+            >
+              Build a product →
+            </Link>
+            <Link
+              href="/verify/6UNaWnAMpjHHxzC8KD78wYekjVwNNHKVMnm1rf5TiG9s"
+              className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium hover:bg-accent"
+            >
+              See real proof
+            </Link>
+          </div>
+
+          <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border pt-4 font-mono text-xs text-muted-foreground">
+            {FACTS.map((fact) => (
+              <span key={fact.label}>
+                {fact.label} <span className="text-status-true">{fact.value}</span>
+              </span>
+            ))}
+          </div>
         </div>
 
-        <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-          Multi-leg, tiered payouts,
-          <br />
-          <span className="text-gradient">settled trustlessly on-chain.</span>
-        </h1>
-
-        <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-          Strata turns sports-stat conditions into structured, tiered payoffs.
-          Settlement is a permissionless CPI into TxLINE&rsquo;s own on-chain proof
-          verifier — no oracle to trust, no self-attested results.
-        </p>
-
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/build"
-            className="btn-gradient inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
-          >
-            Build a product →
-          </Link>
-          <Link
-            href="/verify/6UNaWnAMpjHHxzC8KD78wYekjVwNNHKVMnm1rf5TiG9s"
-            className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium hover:bg-accent"
-          >
-            See real proof
-          </Link>
-        </div>
-
-        <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border pt-4 font-mono text-xs text-muted-foreground">
-          {FACTS.map((fact) => (
-            <span key={fact.label}>
-              {fact.label} <span className="text-status-true">{fact.value}</span>
-            </span>
-          ))}
+        {/* right half of the hero — real live numbers, not decoration */}
+        <div className="rounded-xl border border-border bg-card/60 p-6 font-mono text-sm backdrop-blur-sm">
+          <p className="mb-4 text-xs text-muted-foreground">live engine state · devnet</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] text-muted-foreground">open markets</p>
+              <p className="text-2xl text-status-true">{openCount}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">settled</p>
+              <p className="text-2xl">{settledCount}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-[10px] text-muted-foreground">total staked</p>
+              <p className="text-2xl text-status-true">
+                {(Number(totalStaked) / 1e9).toFixed(4)} <span className="text-sm text-muted-foreground">SOL</span>
+              </p>
+            </div>
+          </div>
+          <p className="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">
+            every number here is a live account read — nothing is seeded or mocked.
+          </p>
         </div>
       </div>
 
