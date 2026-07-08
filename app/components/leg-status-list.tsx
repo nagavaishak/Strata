@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { Leg, LegResult } from "@/lib/hooks/useProduct";
 import { useSettleLeg } from "@/lib/hooks/useSettlement";
 import { PublicKey } from "@solana/web3.js";
+import { statLabel } from "@/lib/stat-labels";
 
 const RESULT_LABEL: Record<LegResult, string> = {
   unsettled: "pending",
@@ -15,9 +16,9 @@ function describeLeg(leg: Leg): string {
   const cmp = leg.comparison === "greaterThan" ? ">" : leg.comparison === "lessThan" ? "<" : "=";
   if (leg.hasSecondStat) {
     const op = leg.op === "add" ? "+" : "−";
-    return `stat ${leg.statKeyA} ${op} stat ${leg.statKeyB} ${cmp} ${leg.threshold}`;
+    return `${statLabel(leg.statKeyA)} ${op} ${statLabel(leg.statKeyB)} ${cmp} ${leg.threshold}`;
   }
-  return `stat ${leg.statKeyA} ${cmp} ${leg.threshold}`;
+  return `${statLabel(leg.statKeyA)} ${cmp} ${leg.threshold}`;
 }
 
 export function LegStatusList({

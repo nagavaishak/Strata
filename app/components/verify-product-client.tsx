@@ -7,6 +7,8 @@ import { useProduct } from "@/lib/hooks/useProduct";
 import { usePosition } from "@/lib/hooks/usePosition";
 import { useAccountSignatures } from "@/lib/hooks/useAccountSignatures";
 import { useClaim } from "@/lib/hooks/useSettlement";
+import { TierLadder } from "@/components/tier-ladder";
+import { formatSol, bpsToMultiplier } from "@/lib/format";
 
 export function VerifyProductClient({ productAddress }: { productAddress: string }) {
   const product = new PublicKey(productAddress);
@@ -35,34 +37,47 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
         </p>
       </div>
 
-      <section className="space-y-2 rounded-lg border border-border bg-card p-4 font-mono text-sm">
-        <p>
-          status <span className="text-foreground">{data.status}</span>
-        </p>
-        <p>
-          legs true{" "}
-          <span className="text-foreground">
-            {data.legResults.filter((r) => r === "true").length} / {data.numLegs}
+      <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center justify-between font-mono text-sm">
+          <span>
+            status <span className="text-foreground">{data.status}</span>
           </span>
-        </p>
-        <p>
-          final payout <span className="text-status-true">{(data.finalPayoutBps / 10000).toFixed(2)}x</span>{" "}
-          <span className="text-muted-foreground">({data.finalPayoutBps} bps — recomputable by anyone from this account alone)</span>
-        </p>
+          <span>
+            legs true{" "}
+            <span className="text-foreground">
+              {data.legResults.filter((r) => r === "true").length} / {data.numLegs}
+            </span>
+          </span>
+        </div>
+        <div>
+          <p className="mb-1 font-mono text-xs text-muted-foreground">payout tier table (achieved tier highlighted)</p>
+          <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
+        </div>
       </section>
 
       {publicKey && (
         <section className="space-y-3 rounded-lg border border-border bg-card p-4 font-mono text-sm">
-          <h2 className="text-muted-foreground">your position</h2>
+          <h2 className="text-muted-foreground">your position — recomputed, not trusted</h2>
           {position ? (
             <>
-              <p>stake {(Number(position.stake) / 1e9).toFixed(6)} SOL</p>
-              <p>
-                recomputed payout{" "}
-                <span className="text-status-true">
-                  {recomputedPayout != null ? (Number(recomputedPayout) / 1e9).toFixed(6) : "—"} SOL
-                </span>
-              </p>
+              <div className="space-y-1 rounded bg-secondary/50 p-3 text-xs">
+                <p>
+                  stake <span className="text-foreground">{formatSol(position.stake, 6)} SOL</span>
+                </p>
+                <p className="text-muted-foreground">×</p>
+                <p>
+                  final payout{" "}
+                  <span className="text-foreground">{bpsToMultiplier(data.finalPayoutBps)}</span>{" "}
+                  <span className="text-muted-foreground">({data.finalPayoutBps} bps)</span>
+                </p>
+                <p className="text-muted-foreground">=</p>
+                <p>
+                  recomputed payout{" "}
+                  <span className="text-status-true">
+                    {recomputedPayout != null ? formatSol(recomputedPayout, 6) : "—"} SOL
+                  </span>
+                </p>
+              </div>
               <p>claimed {position.claimed ? "yes" : "no"}</p>
               {data.status === "settled" && !position.claimed && (
                 <Button size="sm" onClick={() => claim.mutate(product)} disabled={claim.isPending}>
@@ -78,12 +93,12 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
       )}
 
       <section className="space-y-2">
-        <h2 className="font-mono text-sm text-muted-foreground">on-chain transaction history</h2>
+        <h2 className="font-mono text-sm text-muted-foreground">on-chain transaction ledger</h2>
         <p className="text-xs text-muted-foreground">
           Pulled directly from Solana RPC (getSignaturesForAddress) — not from our servers.
           Re-derive this list yourself against the same account to check nothing was hidden.
         </p>
-        <div className="space-y-1 font-mono text-xs">
+        <div className="divide-y divide-border rounded-lg border border-border font-mono text-xs">
           {signatures?.length ? (
             signatures.map((s) => (
               <a
@@ -91,13 +106,14 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
                 href={`https://explorer.solana.com/tx/${s.signature}?cluster=devnet`}
                 target="_blank"
                 rel="noreferrer"
-                className="block truncate text-muted-foreground hover:text-foreground hover:underline"
+                className="flex items-center gap-2 truncate px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
               >
-                {s.err ? "✗" : "✓"} {s.signature}
+                <span className={s.err ? "text-status-false" : "text-status-true"}>{s.err ? "✗" : "✓"}</span>
+                <span className="truncate">{s.signature}</span>
               </a>
             ))
           ) : (
-            <p className="text-muted-foreground">loading transaction history…</p>
+            <p className="p-3 text-muted-foreground">loading transaction history…</p>
           )}
         </div>
       </section>
