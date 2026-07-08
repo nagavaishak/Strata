@@ -53,7 +53,10 @@ export default function BuildPage() {
         <h1 className="text-2xl font-semibold tracking-tight">00 Build a product</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Combine up to 5 stat conditions into a tiered payout table. Not a yes/no bet —
-          the more legs come true, the higher the payout tier.
+          the more legs come true, the higher the payout tier.{" "}
+          <Link href="/build/geo" className="underline">
+            Or predict an exact outcome →
+          </Link>
         </p>
       </div>
 
