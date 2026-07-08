@@ -49,18 +49,20 @@ const DESTINATIONS = [
 
 export default function Home() {
   return (
-    <div className="mx-auto flex max-w-3xl flex-1 flex-col gap-24 px-6 py-24">
+    <div className="relative mx-auto flex max-w-3xl flex-1 flex-col gap-24 px-6 py-24">
       {/* what */}
-      <div className="flex flex-col gap-10">
+      <div className="relative flex flex-col gap-10">
+        <div className="bg-hero-glow pointer-events-none absolute -inset-x-24 -top-24 -z-10 h-[36rem]" />
+
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-mono text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-status-true" />
+          <span className="glow-dot h-1.5 w-1.5 rounded-full bg-status-true" />
           structured settlement · not a coin flip
         </div>
 
         <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
           Multi-leg, tiered payouts,
           <br />
-          <span className="text-muted-foreground">settled trustlessly on-chain.</span>
+          <span className="text-gradient">settled trustlessly on-chain.</span>
         </h1>
 
         <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
@@ -68,6 +70,21 @@ export default function Home() {
           Settlement is a permissionless CPI into TxLINE&rsquo;s own on-chain proof
           verifier — no oracle to trust, no self-attested results.
         </p>
+
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/build"
+            className="btn-gradient inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
+          >
+            Build a product →
+          </Link>
+          <Link
+            href="/verify/6UNaWnAMpjHHxzC8KD78wYekjVwNNHKVMnm1rf5TiG9s"
+            className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium hover:bg-accent"
+          >
+            See real proof
+          </Link>
+        </div>
 
         <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border pt-4 font-mono text-xs text-muted-foreground">
           {FACTS.map((fact) => (
@@ -79,7 +96,7 @@ export default function Home() {
       </div>
 
       {/* why */}
-      <div className="flex flex-col gap-8">
+      <div id="why" className="flex scroll-mt-20 flex-col gap-8">
         <h2 className="font-mono text-sm text-muted-foreground">why this, not another prediction market</h2>
         <div className="grid gap-6 sm:grid-cols-3">
           {WHY_POINTS.map((point) => (

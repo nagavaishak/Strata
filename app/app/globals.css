@@ -87,6 +87,8 @@
   --status-true: oklch(0.6 0.16 155);
   --status-false: oklch(0.6 0.19 25);
   --status-pending: oklch(0.75 0.14 85);
+  --accent-from: oklch(0.6 0.16 155);
+  --accent-to: oklch(0.65 0.14 220);
 }
 
 .dark {
@@ -124,6 +126,8 @@
   --status-true: oklch(0.72 0.19 155);
   --status-false: oklch(0.68 0.21 25);
   --status-pending: oklch(0.8 0.16 85);
+  --accent-from: oklch(0.75 0.19 155);
+  --accent-to: oklch(0.78 0.14 220);
 }
 
 @layer base {
@@ -173,4 +177,39 @@
 }
 .wallet-adapter-modal-list .wallet-adapter-button:hover {
   background-color: var(--accent) !important;
+}
+
+/* Strata's own accent gradient — emerald (our status-true green) to cyan.
+   Deliberately distinct from any reference site's palette; chosen to extend
+   our existing status-color system ("true/settled" green) rather than being
+   a decoration with no meaning. */
+.text-gradient {
+  background-image: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.btn-gradient {
+  background-image: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+  color: var(--background);
+}
+.btn-gradient:hover {
+  opacity: 0.9;
+}
+.glow-dot {
+  box-shadow: 0 0 8px 1px var(--accent-from);
+}
+.bg-hero-glow {
+  background-image:
+    radial-gradient(600px circle at 20% 10%, color-mix(in srgb, var(--accent-from) 14%, transparent), transparent 60%),
+    radial-gradient(500px circle at 80% 0%, color-mix(in srgb, var(--accent-to) 10%, transparent), transparent 60%),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--foreground) 3%, transparent) 0px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--foreground) 3%, transparent) 0px, transparent 1px, transparent 32px);
+}
+@keyframes blink-cursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.cursor-blink {
+  animation: blink-cursor 1s step-end infinite;
 }

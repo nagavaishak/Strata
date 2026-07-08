@@ -19,7 +19,11 @@ export function StatusBadge() {
     <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-mono">
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          isError ? "bg-status-false" : isLoading ? "bg-status-pending" : "bg-status-true"
+          isError
+            ? "bg-status-false"
+            : isLoading
+              ? "bg-status-pending"
+              : "glow-dot bg-status-true"
         }`}
       />
       <span className="text-muted-foreground">devnet</span>

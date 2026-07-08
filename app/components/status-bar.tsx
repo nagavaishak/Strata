@@ -19,6 +19,7 @@ export function StatusBar({ children }: { children?: React.ReactNode }) {
         <span>
           net <span className="text-foreground">solana · {network}</span>
         </span>
+        <span className="cursor-blink text-foreground">▌</span>
       </div>
     </div>
   );
