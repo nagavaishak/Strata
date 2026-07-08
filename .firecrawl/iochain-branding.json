@@ -1,0 +1,160 @@
+{
+  "branding": {
+    "colorScheme": "dark",
+    "fonts": [
+      {
+        "family": "General Sans",
+        "role": "body"
+      },
+      {
+        "family": "JetBrains Mono",
+        "role": "monospace"
+      }
+    ],
+    "colors": {
+      "primary": "#8B919D",
+      "secondary": "#917140",
+      "accent": "#914046",
+      "background": "#07080A",
+      "textPrimary": "#858688",
+      "link": "#914046"
+    },
+    "typography": {
+      "fontFamilies": {
+        "primary": "General Sans",
+        "heading": "General Sans"
+      },
+      "fontStacks": {
+        "heading": [
+          "Clash Display",
+          "Clash Display Variable",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif"
+        ],
+        "body": [
+          "General Sans",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "sans-serif"
+        ],
+        "paragraph": [
+          "General Sans",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "sans-serif"
+        ]
+      },
+      "fontSizes": {
+        "h1": "105.6px",
+        "h2": "105.6px",
+        "body": "21.6px"
+      }
+    },
+    "spacing": {
+      "baseUnit": 4,
+      "borderRadius": "2px"
+    },
+    "components": {
+      "buttonPrimary": {
+        "background": "#0B0D11",
+        "textColor": "#C9CDD6",
+        "borderColor": "#212429",
+        "borderRadius": "999px",
+        "borderRadiusCorners": {
+          "topLeft": "999px",
+          "topRight": "999px",
+          "bottomRight": "999px",
+          "bottomLeft": "999px"
+        },
+        "shadow": "none"
+      }
+    },
+    "images": {
+      "logo": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2226%22%20height%3D%2226%22%20viewBox%3D%220%200%2026%2026%22%20fill%3D%22none%22%20aria-label%3D%22IOChain%22%20style%3D%22overflow%3Avisible%22%20data-fc-idx%3D%220%22%3E%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2219.3%22%20height%3D%2219.3%22%20rx%3D%221.8200000000000003%22%20stroke-width%3D%221.5%22%20style%3D%22filter%3A%20drop-shadow(0%200%204px%20var(--green-glow))%3B%20fill%3A%20none%20!important%3B%20stroke%3A%20rgb(20%2C%20241%2C%20149)%20!important%3B%20stroke-width%3A%201.5px%20!important%3B%22%2F%3E%3Crect%20x%3D%225.95%22%20y%3D%225.95%22%20width%3D%2219.3%22%20height%3D%2219.3%22%20rx%3D%221.8200000000000003%22%20stroke-width%3D%221.5%22%20style%3D%22mix-blend-mode%3A%20screen%3B%20filter%3A%20drop-shadow(0%200%204px%20var(--purple-glow))%3B%20fill%3A%20none%20!important%3B%20stroke%3A%20rgb(153%2C%2069%2C%20255)%20!important%3B%20stroke-width%3A%201.5px%20!important%3B%22%2F%3E%3Crect%20x%3D%2211.7%22%20y%3D%2211.7%22%20width%3D%222.6%22%20height%3D%222.6%22%20rx%3D%220.65%22%20style%3D%22animation%3A%20pulse-dot%202.2s%20var(--ease-in-out)%20infinite%3B%20transform-origin%3A%20center%20center%3B%20fill%3A%20rgb(244%2C%20246%2C%20250)%20!important%3B%20opacity%3A%200.5%20!important%3B%22%2F%3E%3C%2Fsvg%3E",
+      "favicon": "https://www.iochain.dev/favicon.svg",
+      "ogImage": null,
+      "logoAlt": "IOChain"
+    },
+    "__llm_logo_reasoning": {
+      "selectedIndex": 0,
+      "reasoning": "Selected #0 because it is visible, located in the header, and the alt text matches the brand name 'IOChain'.",
+      "confidence": 0.9,
+      "source": "llm"
+    },
+    "__llm_button_reasoning": {
+      "primary": {
+        "index": 0,
+        "text": "How it works",
+        "reasoning": "The button labeled 'How it works' is the only button available and uses a distinct dark color, making it the primary CTA by default."
+      },
+      "secondary": {
+        "index": -1,
+        "text": "N/A",
+        "reasoning": "There is only one button available, so no secondary button can be selected."
+      },
+      "confidence": 0.9
+    },
+    "personality": {
+      "tone": "modern",
+      "energy": "medium",
+      "targetAudience": "developers and tech enthusiasts"
+    },
+    "designSystem": {
+      "framework": "custom",
+      "componentLibrary": ""
+    },
+    "confidence": {
+      "buttons": 0.9,
+      "colors": 0.9,
+      "overall": 0.9
+    },
+    "__llm_metadata": {
+      "logoSelection": {
+        "llmCalled": true,
+        "llmSucceeded": true,
+        "finalSource": "llm",
+        "rawLogoSelection": {
+          "selectedLogoIndex": 0,
+          "selectedLogoReasoning": "Selected #0 because it is visible, located in the header, and the alt text matches the brand name 'IOChain'.",
+          "confidence": 0.9
+        }
+      },
+      "buttonClassification": {
+        "llmCalled": true,
+        "llmSucceeded": true
+      }
+    }
+  },
+  "metadata": {
+    "viewport": "width=device-width, initial-scale=1, maximum-scale=1",
+    "twitter:title": "IOChain — Idle compute, made trustable, settled on Solana",
+    "language": "en",
+    "application-name": "IOChain",
+    "keywords": "IOChain,decentralized inference,Solana,FHE,zero-knowledge proofs,WebAssembly,trustable runtime",
+    "twitter:card": "summary",
+    "og:description": "A trustable runtime for decentralized AI inference. Protected models, encrypted inputs, verifiable execution — on Solana.",
+    "og:type": "website",
+    "og:title": "IOChain — Idle compute, made trustable, settled on Solana",
+    "ogTitle": "IOChain — Idle compute, made trustable, settled on Solana",
+    "description": "IOChain is a trustable runtime for decentralized AI inference. Protected models, encrypted inputs, verifiable execution — running on idle GPUs, settled on Solana.",
+    "twitter:description": "A trustable runtime for decentralized AI inference. Protected models, encrypted inputs, verifiable execution — on Solana.",
+    "title": "IOChain — Idle compute, made trustable, settled on Solana",
+    "theme-color": "#07080a",
+    "ogDescription": "A trustable runtime for decentralized AI inference. Protected models, encrypted inputs, verifiable execution — on Solana.",
+    "favicon": "https://www.iochain.dev/favicon.svg",
+    "scrapeId": "019f4198-9a2a-721b-8264-55cac863908e",
+    "sourceURL": "https://www.iochain.dev/",
+    "url": "https://www.iochain.dev/",
+    "statusCode": 200,
+    "contentType": "text/html; charset=utf-8",
+    "timezone": "America/New_York",
+    "proxyUsed": "basic",
+    "indexId": "86840068-6251-4b1b-8b59-1698860b6e50",
+    "creditsUsed": 1,
+    "concurrencyLimited": false
+  },
+  "images": []
+}
