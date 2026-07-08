@@ -1,0 +1,2529 @@
+{
+  "address": "37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs",
+  "metadata": {
+    "name": "strata",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "claim",
+      "docs": [
+        "Pays from the shared pool vault, not a per-product vault, and releases this",
+        "buyer's share of `owed` on the pool — keeping the pool-wide invariant exact as",
+        "claims happen one at a time, in any order, by any number of buyers."
+      ],
+      "discriminator": [
+        62,
+        198,
+        214,
+        193,
+        213,
+        159,
+        108,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "product",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  100,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product.fixture_id",
+                "account": "Product"
+              },
+              {
+                "kind": "account",
+                "path": "product.nonce",
+                "account": "Product"
+              }
+            ]
+          }
+        },
+        {
+          "name": "writer_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  114,
+                  105,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product.writer",
+                "account": "Product"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product.writer",
+                "account": "Product"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product"
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_geo",
+      "discriminator": [
+        174,
+        161,
+        181,
+        199,
+        34,
+        241,
+        110,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "geo_product",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  101,
+                  111,
+                  95,
+                  112,
+                  114,
+                  111,
+                  100,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.fixture_id",
+                "account": "GeoProduct"
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.nonce",
+                "account": "GeoProduct"
+              }
+            ]
+          }
+        },
+        {
+          "name": "writer_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  114,
+                  105,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.writer",
+                "account": "GeoProduct"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.writer",
+                "account": "GeoProduct"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  101,
+                  111,
+                  95,
+                  112,
+                  111,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "geo_product"
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_geo_product",
+      "discriminator": [
+        255,
+        174,
+        23,
+        199,
+        90,
+        70,
+        180,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "geo_product",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  101,
+                  111,
+                  95,
+                  112,
+                  114,
+                  111,
+                  100,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "fixture_id"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "writer_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  114,
+                  105,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "payer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "payer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "fixture_id",
+          "type": "i64"
+        },
+        {
+          "name": "nonce",
+          "type": "u32"
+        },
+        {
+          "name": "stat_key_a",
+          "type": "u32"
+        },
+        {
+          "name": "stat_key_b",
+          "type": "u32"
+        },
+        {
+          "name": "prediction_a",
+          "type": "i32"
+        },
+        {
+          "name": "prediction_b",
+          "type": "i32"
+        },
+        {
+          "name": "distance_threshold",
+          "type": "i32"
+        },
+        {
+          "name": "distance_comparison",
+          "type": {
+            "defined": {
+              "name": "Comparison"
+            }
+          }
+        },
+        {
+          "name": "payout_bps_if_true",
+          "type": "u16"
+        },
+        {
+          "name": "closes_at",
+          "type": "i64"
+        },
+        {
+          "name": "settle_deadline",
+          "type": "i64"
+        },
+        {
+          "name": "max_capacity",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_product",
+      "docs": [
+        "Creator's writer pool reserves this product's worst-case obligation instead of",
+        "moving fresh collateral — the capital was already posted via fund_pool, possibly",
+        "backing other open products from the same writer too. This is the cross-product",
+        "capital efficiency: one pool, many products, one solvency check, not N separate",
+        "dedicated vaults."
+      ],
+      "discriminator": [
+        183,
+        155,
+        202,
+        119,
+        43,
+        114,
+        174,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "product",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  100,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "fixture_id"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "writer_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  114,
+                  105,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "payer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "payer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "fixture_id",
+          "type": "i64"
+        },
+        {
+          "name": "nonce",
+          "type": "u32"
+        },
+        {
+          "name": "legs",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "Leg"
+              }
+            }
+          }
+        },
+        {
+          "name": "tiers",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "Tier"
+              }
+            }
+          }
+        },
+        {
+          "name": "closes_at",
+          "type": "i64"
+        },
+        {
+          "name": "settle_deadline",
+          "type": "i64"
+        },
+        {
+          "name": "max_capacity",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "product",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  100,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product.fixture_id",
+                "account": "Product"
+              },
+              {
+                "kind": "account",
+                "path": "product.nonce",
+                "account": "Product"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product.writer",
+                "account": "Product"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product"
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deposit_geo",
+      "discriminator": [
+        221,
+        210,
+        139,
+        79,
+        5,
+        113,
+        194,
+        228
+      ],
+      "accounts": [
+        {
+          "name": "geo_product",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  101,
+                  111,
+                  95,
+                  112,
+                  114,
+                  111,
+                  100,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.fixture_id",
+                "account": "GeoProduct"
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.nonce",
+                "account": "GeoProduct"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.writer",
+                "account": "GeoProduct"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  101,
+                  111,
+                  95,
+                  112,
+                  111,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "geo_product"
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "finalize_product",
+      "docs": [
+        "Tallies proven legs into the tier table. Legs left unsettled past settle_deadline",
+        "default to False so the product always resolves to a payout. Also moves this",
+        "product's obligation from the pool's `reserved` (worst case, while open) to `owed`",
+        "(the actual confirmed liability) — a pure transfer between the two counters, so the",
+        "pool's solvency invariant (vault_balance >= reserved + owed) is unaffected by this",
+        "instruction; it only ever changes which bucket an amount sits in, never the total."
+      ],
+      "discriminator": [
+        123,
+        219,
+        116,
+        246,
+        145,
+        252,
+        244,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "product",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  100,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product.fixture_id",
+                "account": "Product"
+              },
+              {
+                "kind": "account",
+                "path": "product.nonce",
+                "account": "Product"
+              }
+            ]
+          }
+        },
+        {
+          "name": "writer_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  114,
+                  105,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product.writer",
+                "account": "Product"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "fund_pool",
+      "docs": [
+        "Writer adds capital ahead of creating products. Pure balance increase — trivially",
+        "preserves the solvency invariant (both sides of `>=` keep their values; only the",
+        "left side grows)."
+      ],
+      "discriminator": [
+        36,
+        57,
+        233,
+        176,
+        181,
+        20,
+        87,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "writer_pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  114,
+                  105,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "writer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "writer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "writer",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "writer_pool"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "docs": [
+        "One-time setup. Stores which program `settle_leg` CPIs into, so a future TxLINE",
+        "program migration (e.g. validate_stat_v2 under a new program id) doesn't require",
+        "redeploying Strata — just calling update_config again."
+      ],
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "txoracle_program_id",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "initialize_writer_pool",
+      "docs": [
+        "One pool per writer, shared across every product they create. Solvency is a single",
+        "running invariant, never a per-product calculation: at all times,",
+        "pool_vault_balance >= reserved (open products' worst cases) + owed (settled,",
+        "confirmed, not-yet-claimed payouts)",
+        "Every instruction below that touches reserved/owed preserves this invariant by",
+        "construction — see each one's doc comment for the specific argument."
+      ],
+      "discriminator": [
+        207,
+        6,
+        226,
+        79,
+        163,
+        235,
+        55,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "writer_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  114,
+                  105,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "writer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "writer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "writer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settle_geo_product",
+      "docs": [
+        "Permissionless, single-shot: settle and finalize together, since a geometric product",
+        "resolves to one atomic true/false, not a per-leg tally needing a separate finalize pass."
+      ],
+      "discriminator": [
+        199,
+        79,
+        25,
+        11,
+        147,
+        50,
+        186,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "geo_product",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  101,
+                  111,
+                  95,
+                  112,
+                  114,
+                  111,
+                  100,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.fixture_id",
+                "account": "GeoProduct"
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.nonce",
+                "account": "GeoProduct"
+              }
+            ]
+          }
+        },
+        {
+          "name": "writer_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  114,
+                  105,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "geo_product.writer",
+                "account": "GeoProduct"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "txoracle_program"
+        },
+        {
+          "name": "daily_scores_merkle_roots"
+        }
+      ],
+      "args": [
+        {
+          "name": "ts",
+          "type": "i64"
+        },
+        {
+          "name": "fixture_summary",
+          "type": {
+            "defined": {
+              "name": "ScoresBatchSummary"
+            }
+          }
+        },
+        {
+          "name": "fixture_proof",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "ProofNode"
+              }
+            }
+          }
+        },
+        {
+          "name": "main_tree_proof",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "ProofNode"
+              }
+            }
+          }
+        },
+        {
+          "name": "event_stat_root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "stats",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "StatLeaf"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "settle_leg",
+      "docs": [
+        "Permissionless. Caller supplies only proof material; the program constructs the",
+        "TraderPredicate from Product.legs[leg_index] and binds the proof to this fixture."
+      ],
+      "discriminator": [
+        96,
+        148,
+        220,
+        244,
+        50,
+        28,
+        212,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "product",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  100,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "product.fixture_id",
+                "account": "Product"
+              },
+              {
+                "kind": "account",
+                "path": "product.nonce",
+                "account": "Product"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "txoracle_program"
+        },
+        {
+          "name": "daily_scores_merkle_roots"
+        }
+      ],
+      "args": [
+        {
+          "name": "leg_index",
+          "type": "u8"
+        },
+        {
+          "name": "ts",
+          "type": "i64"
+        },
+        {
+          "name": "fixture_summary",
+          "type": {
+            "defined": {
+              "name": "ScoresBatchSummary"
+            }
+          }
+        },
+        {
+          "name": "fixture_proof",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "ProofNode"
+              }
+            }
+          }
+        },
+        {
+          "name": "main_tree_proof",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "ProofNode"
+              }
+            }
+          }
+        },
+        {
+          "name": "stat_a",
+          "type": {
+            "defined": {
+              "name": "StatTerm"
+            }
+          }
+        },
+        {
+          "name": "stat_b",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "StatTerm"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_config",
+      "discriminator": [
+        29,
+        158,
+        252,
+        191,
+        10,
+        83,
+        219,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "txoracle_program_id",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_from_pool",
+      "docs": [
+        "Writer withdraws idle capital. Only ever allows taking out what's neither reserved",
+        "for an open product's worst case nor owed to a settled product's buyers — provably",
+        "safe across the writer's ENTIRE book of products at once, not product-by-product."
+      ],
+      "discriminator": [
+        62,
+        33,
+        128,
+        81,
+        40,
+        234,
+        29,
+        77
+      ],
+      "accounts": [
+        {
+          "name": "writer_pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  114,
+                  105,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "writer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "writer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "writer",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "writer_pool"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "GeoProduct",
+      "discriminator": [
+        108,
+        189,
+        55,
+        218,
+        237,
+        35,
+        253,
+        153
+      ]
+    },
+    {
+      "name": "PoolVault",
+      "discriminator": [
+        9,
+        184,
+        204,
+        69,
+        231,
+        82,
+        252,
+        154
+      ]
+    },
+    {
+      "name": "Position",
+      "discriminator": [
+        170,
+        188,
+        143,
+        228,
+        122,
+        64,
+        247,
+        208
+      ]
+    },
+    {
+      "name": "Product",
+      "discriminator": [
+        102,
+        76,
+        55,
+        251,
+        38,
+        73,
+        224,
+        229
+      ]
+    },
+    {
+      "name": "WriterPool",
+      "discriminator": [
+        139,
+        62,
+        9,
+        220,
+        204,
+        202,
+        51,
+        97
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "Claimed",
+      "discriminator": [
+        217,
+        192,
+        123,
+        72,
+        108,
+        150,
+        248,
+        33
+      ]
+    },
+    {
+      "name": "GeoProductSettled",
+      "discriminator": [
+        190,
+        153,
+        11,
+        41,
+        46,
+        248,
+        28,
+        159
+      ]
+    },
+    {
+      "name": "LegSettled",
+      "discriminator": [
+        79,
+        51,
+        184,
+        196,
+        232,
+        188,
+        99,
+        19
+      ]
+    },
+    {
+      "name": "PoolWithdrawn",
+      "discriminator": [
+        23,
+        62,
+        221,
+        23,
+        53,
+        222,
+        69,
+        207
+      ]
+    },
+    {
+      "name": "ProductSettled",
+      "discriminator": [
+        205,
+        47,
+        140,
+        250,
+        75,
+        185,
+        163,
+        132
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "BadLegCount",
+      "msg": "leg count must be 1..=MAX_LEGS"
+    },
+    {
+      "code": 6001,
+      "name": "BadTierCount",
+      "msg": "tier count must be 1..=MAX_TIERS"
+    },
+    {
+      "code": 6002,
+      "name": "BadDeadline",
+      "msg": "settle_deadline must be after closes_at"
+    },
+    {
+      "code": 6003,
+      "name": "TierOutOfRange",
+      "msg": "tier min_legs_true exceeds leg count"
+    },
+    {
+      "code": 6004,
+      "name": "TiersNotMonotonic",
+      "msg": "tiers must be strictly increasing in legs and non-decreasing in payout"
+    },
+    {
+      "code": 6005,
+      "name": "MissingZeroTier",
+      "msg": "must include a tier for 0 legs true"
+    },
+    {
+      "code": 6006,
+      "name": "ProductNotOpen",
+      "msg": "product not open"
+    },
+    {
+      "code": 6007,
+      "name": "ProductClosed",
+      "msg": "product has closed for deposits"
+    },
+    {
+      "code": 6008,
+      "name": "ZeroAmount",
+      "msg": "amount must be > 0"
+    },
+    {
+      "code": 6009,
+      "name": "InsufficientPoolBalance",
+      "msg": "withdrawal would dip into reserved or owed pool capital"
+    },
+    {
+      "code": 6010,
+      "name": "CapacityExceeded",
+      "msg": "deposit would exceed product's max_capacity"
+    },
+    {
+      "code": 6011,
+      "name": "TooEarlyToSettle",
+      "msg": "too early to settle, wait for closes_at"
+    },
+    {
+      "code": 6012,
+      "name": "BadLegIndex",
+      "msg": "bad leg index"
+    },
+    {
+      "code": 6013,
+      "name": "LegAlreadySettled",
+      "msg": "leg already settled"
+    },
+    {
+      "code": 6014,
+      "name": "FixtureMismatch",
+      "msg": "fixture id mismatch"
+    },
+    {
+      "code": 6015,
+      "name": "BatchPredatesClose",
+      "msg": "batch predates closes_at — can't settle on data that existed before deposits closed"
+    },
+    {
+      "code": 6016,
+      "name": "StatKeyMismatch",
+      "msg": "stat key mismatch"
+    },
+    {
+      "code": 6017,
+      "name": "MissingSecondStat",
+      "msg": "leg requires a second stat term"
+    },
+    {
+      "code": 6018,
+      "name": "LegsStillPending",
+      "msg": "legs still pending and before settle_deadline"
+    },
+    {
+      "code": 6019,
+      "name": "NotSettled",
+      "msg": "product not settled"
+    },
+    {
+      "code": 6020,
+      "name": "AlreadyClaimed",
+      "msg": "already claimed"
+    },
+    {
+      "code": 6021,
+      "name": "NothingToClaim",
+      "msg": "nothing to claim"
+    },
+    {
+      "code": 6022,
+      "name": "Unauthorized",
+      "msg": "unauthorized"
+    },
+    {
+      "code": 6023,
+      "name": "Overflow",
+      "msg": "overflow"
+    },
+    {
+      "code": 6024,
+      "name": "BadPayoutBps",
+      "msg": "payout_bps_if_true must be 1..=MAX_GEO_PAYOUT_BPS"
+    },
+    {
+      "code": 6025,
+      "name": "WrongStatCount",
+      "msg": "expected exactly 2 stats for a geometric product"
+    }
+  ],
+  "types": [
+    {
+      "name": "BinaryExpression",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Add"
+          },
+          {
+            "name": "Subtract"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Claimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "product",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Comparison",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "GreaterThan"
+          },
+          {
+            "name": "LessThan"
+          },
+          {
+            "name": "EqualTo"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "txoracle_program_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GeoProduct",
+      "docs": [
+        "A geometric (exact-outcome) product, settled via validate_stat_v2's distance predicate",
+        "instead of the tiered engine's per-leg validate_stat calls. Binary payout: the predicted",
+        "vector either lands within distance_threshold of the real outcome, or it doesn't."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "nonce",
+            "type": "u32"
+          },
+          {
+            "name": "stat_key_a",
+            "type": "u32"
+          },
+          {
+            "name": "stat_key_b",
+            "type": "u32"
+          },
+          {
+            "name": "prediction_a",
+            "type": "i32"
+          },
+          {
+            "name": "prediction_b",
+            "type": "i32"
+          },
+          {
+            "name": "distance_threshold",
+            "type": "i32"
+          },
+          {
+            "name": "distance_comparison",
+            "type": {
+              "defined": {
+                "name": "Comparison"
+              }
+            }
+          },
+          {
+            "name": "payout_bps_if_true",
+            "type": "u16"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ProductStatus"
+              }
+            }
+          },
+          {
+            "name": "closes_at",
+            "type": "i64"
+          },
+          {
+            "name": "settle_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "total_stake",
+            "type": "u64"
+          },
+          {
+            "name": "final_payout_bps",
+            "type": "u16"
+          },
+          {
+            "name": "writer",
+            "type": "pubkey"
+          },
+          {
+            "name": "writer_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_capacity",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_locked",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GeoProductSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "geo_product",
+            "type": "pubkey"
+          },
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "won",
+            "type": "bool"
+          },
+          {
+            "name": "payout_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Leg",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stat_key_a",
+            "type": "u32"
+          },
+          {
+            "name": "stat_key_b",
+            "type": "u32"
+          },
+          {
+            "name": "has_second_stat",
+            "type": "bool"
+          },
+          {
+            "name": "op",
+            "type": {
+              "defined": {
+                "name": "BinaryExpression"
+              }
+            }
+          },
+          {
+            "name": "threshold",
+            "type": "i32"
+          },
+          {
+            "name": "comparison",
+            "type": {
+              "defined": {
+                "name": "Comparison"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "LegResult",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unsettled"
+          },
+          {
+            "name": "True"
+          },
+          {
+            "name": "False"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LegSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "product",
+            "type": "pubkey"
+          },
+          {
+            "name": "leg_index",
+            "type": "u8"
+          },
+          {
+            "name": "won",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "writer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Position",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "product",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake",
+            "type": "u64"
+          },
+          {
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Product",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "nonce",
+            "type": "u32"
+          },
+          {
+            "name": "num_legs",
+            "type": "u8"
+          },
+          {
+            "name": "legs",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Leg"
+                  }
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "num_tiers",
+            "type": "u8"
+          },
+          {
+            "name": "tiers",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Tier"
+                  }
+                },
+                6
+              ]
+            }
+          },
+          {
+            "name": "leg_results",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "LegResult"
+                  }
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ProductStatus"
+              }
+            }
+          },
+          {
+            "name": "closes_at",
+            "type": "i64"
+          },
+          {
+            "name": "settle_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "total_stake",
+            "type": "u64"
+          },
+          {
+            "name": "final_payout_bps",
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "writer",
+            "type": "pubkey"
+          },
+          {
+            "name": "writer_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_capacity",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_locked",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProductSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "product",
+            "type": "pubkey"
+          },
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "legs_true",
+            "type": "u8"
+          },
+          {
+            "name": "payout_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProductStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Settled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProofNode",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "is_right_sibling",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ScoreStat",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "type": "u32"
+          },
+          {
+            "name": "value",
+            "type": "i32"
+          },
+          {
+            "name": "period",
+            "type": "i32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ScoresBatchSummary",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fixture_id",
+            "type": "i64"
+          },
+          {
+            "name": "update_stats",
+            "type": {
+              "defined": {
+                "name": "ScoresUpdateStats"
+              }
+            }
+          },
+          {
+            "name": "events_sub_tree_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ScoresUpdateStats",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "update_count",
+            "type": "i32"
+          },
+          {
+            "name": "min_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "max_timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StatLeaf",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stat",
+            "type": {
+              "defined": {
+                "name": "ScoreStat"
+              }
+            }
+          },
+          {
+            "name": "stat_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "ProofNode"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StatTerm",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stat_to_prove",
+            "type": {
+              "defined": {
+                "name": "ScoreStat"
+              }
+            }
+          },
+          {
+            "name": "event_stat_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "stat_proof",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "ProofNode"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Tier",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "min_legs_true",
+            "type": "u8"
+          },
+          {
+            "name": "payout_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WriterPool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "writer",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserved",
+            "type": "u64"
+          },
+          {
+            "name": "owed",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
