@@ -6,7 +6,7 @@ import { HowItWorksDialog } from "@/components/how-it-works-dialog";
 import { GeoProductCard, TieredProductCard } from "@/components/product-card";
 import { useAllGeoProducts, useAllProducts } from "@/lib/hooks/useAllProducts";
 import { dedupeByFixture } from "@/lib/dedupe-by-fixture";
-import { bpsToMultiplier, formatSol } from "@/lib/format";
+import { bpsToMultiplier, capacityFillFraction, formatPercent, formatSol } from "@/lib/format";
 import {
   getFixturePresentation,
   getGeoMarketPresentation,
@@ -78,6 +78,10 @@ export default function HomePage() {
     : spotlightGeo
       ? bpsToMultiplier(spotlightGeo.data.payoutBpsIfTrue)
       : "1.00x";
+  const spotlightStake = spotlightTiered?.data.totalStake ?? spotlightGeo?.data.totalStake ?? 0n;
+  const spotlightCapacity = spotlightTiered?.data.maxCapacity ?? spotlightGeo?.data.maxCapacity ?? 0n;
+  const spotlightCapacityUsed = formatPercent(capacityFillFraction(spotlightStake, spotlightCapacity));
+  const spotlightStatus = spotlightTiered?.data.status ?? spotlightGeo?.data.status ?? "open";
 
   return (
     <div className="mx-auto flex max-w-[1480px] flex-col gap-14 px-6 py-8 sm:py-10">
@@ -142,8 +146,12 @@ export default function HomePage() {
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Featured market</p>
                       <p className="mt-2 text-xs font-medium text-muted-foreground">{spotlightPresentation.league}</p>
                     </div>
-                    <span className="rounded-full border border-status-true/25 bg-status-true/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-status-true">
-                      Live
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                      spotlightStatus === "open"
+                        ? "border border-status-true/25 bg-status-true/10 text-status-true"
+                        : "border border-border/70 bg-background/35 text-foreground"
+                    }`}>
+                      {spotlightStatus}
                     </span>
                   </div>
 
@@ -166,16 +174,16 @@ export default function HomePage() {
 
                   <div className="mt-5 grid grid-cols-3 gap-2">
                     <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Yes</p>
-                      <p className="mt-2 text-base font-semibold text-status-true">62c</p>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Payout</p>
+                      <p className="mt-2 text-base font-semibold text-status-true">{spotlightTopPayout}</p>
                     </div>
                     <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">No</p>
-                      <p className="mt-2 text-base font-semibold text-foreground">38c</p>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Pool</p>
+                      <p className="mt-2 text-base font-semibold text-foreground">{formatSol(spotlightStake)} SOL</p>
                     </div>
                     <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Top</p>
-                      <p className="mt-2 text-base font-semibold text-foreground">{spotlightTopPayout}</p>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Capacity</p>
+                      <p className="mt-2 text-base font-semibold text-foreground">{spotlightCapacityUsed}</p>
                     </div>
                   </div>
 
@@ -184,15 +192,22 @@ export default function HomePage() {
                   </div>
 
                   <div className="mt-5 rounded-[20px] border border-border/70 bg-background/30 p-4">
-                    <div className="flex items-end gap-2">
-                      <div className="h-14 w-8 rounded-t-xl bg-status-true/25" />
-                      <div className="h-20 w-8 rounded-t-xl bg-status-true/55" />
-                      <div className="h-11 w-8 rounded-t-xl bg-cyan-400/30" />
-                      <div className="h-26 w-8 rounded-t-xl bg-status-true/80" />
-                      <div className="h-17 w-8 rounded-t-xl bg-cyan-400/45" />
-                      <div className="h-15 w-8 rounded-t-xl bg-status-true/40" />
+                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      <span>Capacity used</span>
+                      <span>{spotlightCapacityUsed}</span>
                     </div>
-                    <p className="mt-3 text-xs text-muted-foreground">Live market pulse and payout movement preview.</p>
+                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: spotlightCapacityUsed,
+                          backgroundImage: "linear-gradient(90deg, var(--accent-from), var(--accent-to))",
+                        }}
+                      />
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Strata shows structured payout upside and pool depth directly instead of pretending this market has a simple yes/no spot quote.
+                    </p>
                   </div>
 
                   <Link href={spotlightHref} className="btn-gradient mt-5 inline-flex min-h-11 items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold">

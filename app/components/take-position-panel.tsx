@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { usePosition } from "@/lib/hooks/usePosition";
 import { useDeposit } from "@/lib/hooks/useProductActions";
 import { useDepositGeo } from "@/lib/hooks/useGeoProductActions";
-import { bpsToMultiplier, capacityFillFraction, formatSol } from "@/lib/format";
+import { bpsToMultiplier, capacityFillFraction, formatPercent, formatSol } from "@/lib/format";
 import type { LegResult, Tier } from "@/lib/hooks/useProduct";
 
 const QUICK_AMOUNTS = [0.01, 0.05, 0.1, 0.5];
@@ -93,6 +93,7 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
   const topReturnSol = Number.isFinite(amountValue) && amountValue > 0 ? (amountValue * topPayout) / 10000 : 0;
   const feeEstimate = Number.isFinite(amountValue) && amountValue > 0 ? Math.max(0.0005, amountValue * 0.005) : 0.0005;
   const estimatedBack = Math.max(topReturnSol - feeEstimate, 0);
+  const capacityUsed = formatPercent(fill);
 
   const handleConfirm = () => {
     const amountSol = Number(amount);
@@ -112,16 +113,11 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
   return (
     <>
       <div className="market-shell rounded-[30px] border border-border/80 p-5">
-        <div className="grid grid-cols-2 rounded-[20px] border border-border/70 bg-background/35 p-1">
-          <div className="rounded-[16px] bg-status-true/10 px-3 py-2 text-center text-sm font-semibold text-status-true">Buy Yes</div>
-          <div className="rounded-[16px] px-3 py-2 text-center text-sm font-semibold text-muted-foreground">Buy No</div>
-        </div>
-
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Take a position</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {props.kind === "geo" ? "Buy exact outcome" : "Buy yes"}
+              {props.kind === "geo" ? "Buy exact outcome" : "Buy structured position"}
             </h2>
           </div>
           <div className="rounded-full border border-border/70 bg-background/45 px-3 py-1 text-sm font-semibold text-foreground">
@@ -132,12 +128,12 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
         <div className="mt-5 rounded-[24px] border border-border/70 bg-background/35 p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Price</p>
-              <p className="mt-2 text-3xl font-semibold text-status-true">58c</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Top payout</p>
+              <p className="mt-2 text-3xl font-semibold text-status-true">{bpsToMultiplier(topPayout)}</p>
             </div>
             <div className="sm:text-right">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Capacity used</p>
-              <p className="mt-2 text-xl font-semibold text-foreground">{(fill * 100).toFixed(0)}%</p>
+              <p className="mt-2 text-xl font-semibold text-foreground">{capacityUsed}</p>
             </div>
           </div>
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
@@ -152,7 +148,7 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
           <p className="mt-3 text-xs text-muted-foreground">
             {position
               ? `You already have ${formatSol(position.stake, 4)} SOL staked in this market.`
-              : "Pick an amount and review the payout before you confirm in your wallet."}
+              : "This market uses a structured pool model, so the surface shows payout and capacity honestly instead of a fake spot cents quote."}
           </p>
         </div>
 
@@ -261,11 +257,11 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
             <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Price</span>
+                  <span className="text-muted-foreground">Stake</span>
                   <span className="font-mono text-foreground">{amount} SOL</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">You&apos;ll get back</span>
+                  <span className="text-muted-foreground">Potential top payout</span>
                   <span className="font-mono text-status-true">{topReturnSol.toFixed(4)} SOL</span>
                 </div>
                 <div className="flex items-center justify-between">

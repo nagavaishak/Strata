@@ -11,21 +11,6 @@ import { getListEntryPresentation } from "@/lib/market-presentation";
 type StatusFilter = "trending" | "live" | "open" | "settled";
 type CategoryFilter = "all" | "football" | "structured" | "exact";
 
-const SIDEBAR_GROUPS = [
-  {
-    title: "Categories",
-    items: ["All markets", "Popular", "Live", "Closing soon"],
-  },
-  {
-    title: "Sports",
-    items: ["Football", "Basketball", "Tennis", "eSports", "More"],
-  },
-  {
-    title: "Market type",
-    items: ["All", "Structured", "Exact outcome"],
-  },
-] as const;
-
 function MarketsInner() {
   const searchParams = useSearchParams();
   const { data: tiered, isLoading: tieredLoading } = useAllProducts();
@@ -35,7 +20,17 @@ function MarketsInner() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    if (searchParams.get("filter") === "live") setStatusFilter("live");
+    const nextFilter = searchParams.get("filter");
+    const nextCategory = searchParams.get("category");
+    const nextQuery = searchParams.get("q");
+
+    setStatusFilter(
+      nextFilter === "live" || nextFilter === "open" || nextFilter === "settled" ? nextFilter : "trending"
+    );
+    setCategoryFilter(
+      nextCategory === "football" || nextCategory === "structured" || nextCategory === "exact" ? nextCategory : "all"
+    );
+    setQuery(nextQuery ?? "");
   }, [searchParams]);
 
   const fixtureIds = useMemo(() => {
@@ -170,56 +165,32 @@ function MarketsInner() {
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[220px_1fr]">
-        <aside className="market-shell hidden rounded-[30px] border border-border/80 p-5 xl:block">
-          <div className="space-y-6">
-            {SIDEBAR_GROUPS.map((group) => (
-              <div key={group.title}>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{group.title}</p>
-                <div className="mt-3 space-y-1.5">
-                  {group.items.map((item, index) => (
-                    <div
-                      key={item}
-                      className={`rounded-full px-3 py-2 text-sm ${
-                        index === 0 ? "bg-card text-foreground" : "text-muted-foreground"
-                      }`}
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
+      <section>
+        {isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="market-shell h-[300px] animate-pulse rounded-[30px] border border-border/80 bg-card/60" />
             ))}
           </div>
-        </aside>
-
-        <div>
-          {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="market-shell h-[300px] animate-pulse rounded-[30px] border border-border/80 bg-card/60" />
-              ))}
-            </div>
-          ) : filtered.length ? (
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map(({ entry }) =>
-                entry.kind === "tiered" ? (
-                  <TieredProductCard key={entry.address.toBase58()} entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
-                ) : (
-                  <GeoProductCard key={entry.address.toBase58()} entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
-                )
-              )}
-            </section>
-          ) : (
-            <section className="market-shell rounded-[32px] border border-border/80 p-10 text-center">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">No matches found</p>
-              <h2 className="mt-3 text-2xl font-semibold text-foreground">Try another angle</h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                Clear the search, switch to trending, or jump back to all markets to find a match setup with the right payout profile.
-              </p>
-            </section>
-          )}
-        </div>
+        ) : filtered.length ? (
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map(({ entry }) =>
+              entry.kind === "tiered" ? (
+                <TieredProductCard key={entry.address.toBase58()} entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
+              ) : (
+                <GeoProductCard key={entry.address.toBase58()} entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
+              )
+            )}
+          </section>
+        ) : (
+          <section className="market-shell rounded-[32px] border border-border/80 p-10 text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">No matches found</p>
+            <h2 className="mt-3 text-2xl font-semibold text-foreground">Try another angle</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Clear the search, switch to trending, or jump back to all markets to find a match setup with the right payout profile.
+            </p>
+          </section>
+        )}
       </section>
     </div>
   );
