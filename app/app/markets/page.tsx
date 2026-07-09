@@ -1,191 +1,193 @@
 "use client";
 
-import { Suspense, useMemo, useState, useEffect } from "react";
-import Link from "next/link";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useAllProducts, useAllGeoProducts } from "@/lib/hooks/useAllProducts";
-import { useWriterPool } from "@/lib/hooks/useWriterPool";
+import { GeoProductCard, TieredProductCard } from "@/components/product-card";
+import { useAllGeoProducts, useAllProducts } from "@/lib/hooks/useAllProducts";
 import { useLiveFixtures } from "@/lib/hooks/useLiveFixtures";
-import { RollingNumber } from "@/components/rolling-number";
-import { TieredProductCard, GeoProductCard } from "@/components/product-card";
-import { formatSol } from "@/lib/format";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ProductListEntry, GeoProductListEntry } from "@/lib/hooks/useAllProducts";
+import { getListEntryPresentation } from "@/lib/market-presentation";
 
-type StatusFilter = "all" | "live" | "open" | "settled";
-type TypeFilter = "all" | "tiered" | "geo";
+type StatusFilter = "trending" | "live" | "open" | "settled";
+type CategoryFilter = "all" | "football" | "structured" | "exact";
 
-/** Curated, not raw account order — open-first, highest-stake first, same sort
- * already used for the homepage's featured strip. */
-function curatedSort<T extends { data: { status: string; totalStake: bigint } }>(entries: T[]): T[] {
-  return entries.slice().sort((a, b) => {
-    if (a.data.status !== b.data.status) return a.data.status === "open" ? -1 : 1;
-    return b.data.totalStake > a.data.totalStake ? 1 : -1;
-  });
-}
-
-function MarketsPageInner() {
+function MarketsInner() {
   const searchParams = useSearchParams();
-  const { data: tiered, isLoading: loadingTiered } = useAllProducts();
-  const { data: geo, isLoading: loadingGeo } = useAllGeoProducts();
-  const { data: pool } = useWriterPool();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const { data: tiered, isLoading: tieredLoading } = useAllProducts();
+  const { data: geo, isLoading: geoLoading } = useAllGeoProducts();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("trending");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     if (searchParams.get("filter") === "live") setStatusFilter("live");
   }, [searchParams]);
 
-  const isLoading = loadingTiered || loadingGeo;
-
-  const openFixtureIds = useMemo(() => {
+  const fixtureIds = useMemo(() => {
     const ids = new Set<number>();
-    tiered?.forEach((e) => e.data.status === "open" && ids.add(Number(e.data.fixtureId)));
-    geo?.forEach((e) => e.data.status === "open" && ids.add(Number(e.data.fixtureId)));
+    tiered?.forEach((entry) => entry.data.status === "open" && ids.add(Number(entry.data.fixtureId)));
+    geo?.forEach((entry) => entry.data.status === "open" && ids.add(Number(entry.data.fixtureId)));
     return [...ids];
   }, [tiered, geo]);
-  const liveFixtures = useLiveFixtures(openFixtureIds);
-  const liveCount = Object.values(liveFixtures).filter((f) => f.live).length;
 
-  const totalStaked =
-    (tiered?.reduce((sum, e) => sum + e.data.totalStake, 0n) ?? 0n) +
-    (geo?.reduce((sum, e) => sum + e.data.totalStake, 0n) ?? 0n);
-  const openCount =
-    (tiered?.filter((e) => e.data.status === "open").length ?? 0) +
-    (geo?.filter((e) => e.data.status === "open").length ?? 0);
-  const total = (tiered?.length ?? 0) + (geo?.length ?? 0);
+  const liveFixtures = useLiveFixtures(fixtureIds);
+  const cards = useMemo(() => {
+    const merged = [...(tiered ?? []), ...(geo ?? [])];
+    return merged
+      .map((entry) => ({ entry, presentation: getListEntryPresentation(entry) }))
+      .sort((a, b) => Number(b.entry.data.totalStake - a.entry.data.totalStake));
+  }, [geo, tiered]);
 
-  const isLive = (e: ProductListEntry | GeoProductListEntry) =>
-    !!liveFixtures[Number(e.data.fixtureId)]?.live;
+  const filtered = cards.filter(({ entry, presentation }) => {
+    const live = !!liveFixtures[Number(entry.data.fixtureId)]?.live;
+    const matchesStatus =
+      statusFilter === "trending"
+        ? true
+        : statusFilter === "live"
+          ? entry.data.status === "open" && live
+          : entry.data.status === statusFilter;
 
-  const matchesStatus = (e: ProductListEntry | GeoProductListEntry) => {
-    if (statusFilter === "all") return true;
-    if (statusFilter === "live") return e.data.status === "open" && isLive(e);
-    return e.data.status === statusFilter;
-  };
+    const matchesCategory =
+      categoryFilter === "all"
+        ? true
+        : categoryFilter === "football"
+          ? presentation.sport === "Football"
+          : categoryFilter === "structured"
+            ? entry.kind === "tiered"
+            : entry.kind === "geo";
 
-  const filteredTiered = curatedSort(
-    (tiered ?? []).filter((e) => (typeFilter === "all" || typeFilter === "tiered") && matchesStatus(e))
-  );
-  const filteredGeo = curatedSort(
-    (geo ?? []).filter((e) => (typeFilter === "all" || typeFilter === "geo") && matchesStatus(e))
-  );
+    const haystack = [
+      presentation.marketTitle,
+      presentation.homeTeam,
+      presentation.awayTeam,
+      presentation.league,
+      presentation.scenario,
+    ]
+      .join(" ")
+      .toLowerCase();
+    const matchesQuery = query.trim() ? haystack.includes(query.toLowerCase()) : true;
+
+    return matchesStatus && matchesCategory && matchesQuery;
+  });
+
+  const isLoading = tieredLoading || geoLoading;
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8">
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-status-true">Marketplace</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Explore markets</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
-            Browse every structured and exact-outcome market on Strata. Real markets, real capacity,
-            real payout ladders — all fetched straight from devnet.
-          </p>
+    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
+      <section className="market-shell rounded-[34px] border border-border/80 p-7">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Explore markets</p>
+        <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground">Browse football markets that feel buyable</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
+              Scan the match, read the scenario, check the payout ladder, and move into a clear buy flow without digging through protocol details.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Markets</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">{cards.length}</p>
+            </div>
+            <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Live now</p>
+              <p className="mt-2 text-2xl font-semibold text-status-true">
+                {Object.values(liveFixtures).filter((fixture) => fixture.live).length}
+              </p>
+            </div>
+            <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Structured edge</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">Tiered</p>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2 text-sm">
-          {["Trending", "Live now", "Structured", "Exact outcome", "Closing soon"].map((item) => (
-            <span key={item} className="market-chip shrink-0 rounded-full px-3 py-1.5 text-muted-foreground">
-              {item}
-            </span>
+      </section>
+
+      <section className="market-shell rounded-[30px] border border-border/80 p-5">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            {(["trending", "live", "open", "settled"] as StatusFilter[]).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setStatusFilter(item)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                  statusFilter === item ? "bg-card text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {item === "trending" ? "Trending" : item.charAt(0).toUpperCase() + item.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+            <label className="flex min-h-12 items-center gap-3 rounded-full border border-border/80 bg-background/35 px-4">
+              <Search className="size-4 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                placeholder="Search by match, league, or scenario"
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              {([
+                ["all", "All markets"],
+                ["football", "Football"],
+                ["structured", "Structured"],
+                ["exact", "Exact outcome"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setCategoryFilter(value)}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                    categoryFilter === value
+                      ? "border-status-true bg-status-true/10 text-status-true"
+                      : "border-border/80 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="market-shell h-[360px] animate-pulse rounded-[30px] border border-border/80 bg-card/60" />
           ))}
         </div>
-      </div>
-
-      {/* live stat strip — every number here is real, computed from already-fetched accounts */}
-      <div className="market-shell mb-6 grid grid-cols-2 gap-3 rounded-[28px] border border-border/80 p-5 sm:grid-cols-4">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">total staked</p>
-          <p className="font-mono text-2xl text-status-true">
-            <RollingNumber value={Number(formatSol(totalStaked))} format={(n) => n.toFixed(4)} /> SOL
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">open markets</p>
-          <p className="font-mono text-2xl">
-            <RollingNumber value={openCount} />
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">live now</p>
-          <p className="font-mono text-2xl text-status-true">
-            <RollingNumber value={liveCount} />
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">pool reserved / owed</p>
-          <p className="font-mono text-2xl">
-            {pool ? (
-              <>
-                {formatSol(pool.reserved)} / {formatSol(pool.owed)}
-              </>
+      ) : filtered.length ? (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {filtered.map(({ entry }) =>
+            entry.kind === "tiered" ? (
+              <TieredProductCard key={entry.address.toBase58()} entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
             ) : (
-              "—"
-            )}
+              <GeoProductCard key={entry.address.toBase58()} entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
+            )
+          )}
+        </section>
+      ) : (
+        <section className="market-shell rounded-[32px] border border-border/80 p-10 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">No matches found</p>
+          <h2 className="mt-3 text-2xl font-semibold text-foreground">Try another angle</h2>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
+            Clear the search, switch to trending, or jump back to all markets to find a match setup with the right payout profile.
           </p>
-        </div>
-      </div>
-
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-          <TabsList className="rounded-full border border-border/80 bg-card/80 p-1">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="live">Live</TabsTrigger>
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="settled">Settled</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
-          <TabsList className="rounded-full border border-border/80 bg-card/80 p-1">
-            <TabsTrigger value="all">All types</TabsTrigger>
-            <TabsTrigger value="tiered">Tiered</TabsTrigger>
-            <TabsTrigger value="geo">Exact</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
-      {isLoading && <p className="text-sm text-muted-foreground">loading…</p>}
-
-      {!isLoading && total === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No markets yet —{" "}
-          <Link href="/create" className="underline">
-            create one
-          </Link>
-          .
-        </p>
+        </section>
       )}
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredTiered.map((entry, i) => (
-          <div
-            key={entry.address.toBase58()}
-            className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both"
-            style={{ animationDelay: `${Math.min(i, 12) * 40}ms`, animationDuration: "400ms" }}
-          >
-            <TieredProductCard entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
-          </div>
-        ))}
-        {filteredGeo.map((entry, i) => (
-          <div
-            key={entry.address.toBase58()}
-            className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both"
-            style={{
-              animationDelay: `${Math.min(filteredTiered.length + i, 12) * 40}ms`,
-              animationDuration: "400ms",
-            }}
-          >
-            <GeoProductCard entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
 
 export default function MarketsPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">loading…</div>}>
-      <MarketsPageInner />
+    <Suspense fallback={<div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading markets…</div>}>
+      <MarketsInner />
     </Suspense>
   );
 }

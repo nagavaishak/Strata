@@ -1,24 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PublicKey } from "@solana/web3.js";
 import Link from "next/link";
+import { PublicKey } from "@solana/web3.js";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useProduct } from "@/lib/hooks/useProduct";
+import { MatchIdentity } from "@/components/market-identity";
 import { LegStatusList } from "@/components/leg-status-list";
-import { TierLadder } from "@/components/tier-ladder";
 import { TakePositionPanel } from "@/components/take-position-panel";
-import { RollingNumber } from "@/components/rolling-number";
-import { useFinalizeProduct } from "@/lib/hooks/useSettlement";
+import { TierLadder } from "@/components/tier-ladder";
 import { useCountdown } from "@/lib/hooks/useCountdown";
-import { bpsToMultiplier, formatSol, truncateAddress } from "@/lib/format";
-import { STRATA_PROGRAM_ID } from "@/lib/constants";
+import { useProduct } from "@/lib/hooks/useProduct";
+import { useFinalizeProduct } from "@/lib/hooks/useSettlement";
+import { bpsToMultiplier, formatSol } from "@/lib/format";
+import { getTieredMarketPresentation } from "@/lib/market-presentation";
 
 export function WatchProductClient({ productAddress }: { productAddress: string }) {
   const product = new PublicKey(productAddress);
   const { data, isLoading, isError } = useProduct(product);
   const finalize = useFinalizeProduct();
-
   const [streamStatus, setStreamStatus] = useState<{ live: boolean; lastSeq?: number } | null>(null);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
         const json = await res.json();
         if (!cancelled) setStreamStatus(json);
       } catch {
-        // ignore transient poll failures
+        // keep the surface resilient to polling hiccups
       }
     };
     poll();
@@ -41,146 +41,146 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
     };
   }, [data]);
 
-  const secondsToClose = useCountdown(data ? Number(data.closesAt) : 0);
-
   if (isLoading) {
-    return <p className="p-6 text-sm text-muted-foreground">loading market…</p>;
+    return <div className="mx-auto max-w-[1400px] px-6 py-12 text-sm text-muted-foreground">Loading market…</div>;
   }
   if (isError || !data) {
-    return <p className="p-6 text-sm text-status-false">market not found at {productAddress}</p>;
+    return <div className="mx-auto max-w-[1400px] px-6 py-12 text-sm text-status-false">Market not found.</div>;
   }
 
+  const presentation = getTieredMarketPresentation(data);
+  const secondsToClose = useCountdown(Number(data.closesAt));
   const now = Math.floor(Date.now() / 1000);
   const canSettle = data.status === "open" && now >= Number(data.closesAt);
-  const allSettled = data.legResults.every((r) => r !== "unsettled");
-  const legsSettled = data.legResults.filter((r) => r !== "unsettled").length;
+  const allSettled = data.legResults.every((result) => result !== "unsettled");
+  const legsSettled = data.legResults.filter((result) => result !== "unsettled").length;
+  const topPayout = Math.max(...data.tiers.map((tier) => tier.payoutBps));
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 px-6 py-10">
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-status-true">Structured market</p>
-        <h1 className="text-4xl font-semibold tracking-tight">Fixture {data.fixtureId.toString()}</h1>
-        <p className="mt-2 text-sm leading-7 text-muted-foreground">
-          {data.numLegs} live conditions bundled into one payout ladder.{" "}
-          <span className="font-mono">{truncateAddress(productAddress)}</span>
-        </p>
-      </div>
+    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
+      <Link href="/markets" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" />
+        Back to markets
+      </Link>
 
-      <div className="market-shell flex flex-wrap items-center gap-3 rounded-[24px] border border-border/80 px-4 py-3 text-xs">
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${streamStatus?.live ? "glow-dot bg-status-true" : "bg-status-pending"}`}
-        />
-        <span className="text-muted-foreground">
-          {streamStatus?.live ? (
-            <>
-              live · seq <RollingNumber value={streamStatus.lastSeq ?? 0} durationMs={300} className="font-mono" />
-            </>
-          ) : (
-            "no live stream data for this fixture right now"
-          )}
-        </span>
-        <span className="ml-auto text-xs">
-          {data.status === "open" && secondsToClose > 0 ? (
-            <>closes in {Math.ceil(secondsToClose / 60)}m</>
-          ) : (
-            <span className="text-muted-foreground">
-              status <span className="text-foreground">{data.status}</span>
-            </span>
-          )}
-        </span>
-      </div>
+      <section className="market-shell rounded-[36px] border border-border/80 p-8">
+        <MatchIdentity presentation={presentation} eyebrow="Structured market" />
+      </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-        {/* left: conditions + payout ladder + trust blurb */}
+      <section className="market-shell flex flex-wrap items-center gap-3 rounded-[26px] border border-border/80 px-5 py-4">
+        <span className={`h-2 w-2 rounded-full ${streamStatus?.live ? "glow-dot bg-status-true" : "bg-status-pending"}`} />
+        <span className="text-sm text-muted-foreground">
+          {streamStatus?.live ? "Live match data is flowing for this fixture." : "Match is listed and waiting for live proof updates."}
+        </span>
+        <span className="rounded-full border border-border/70 bg-background/35 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-foreground">
+          {data.status === "open" ? `Closes in ${Math.max(0, Math.ceil(secondsToClose / 60))}m` : "Settled"}
+        </span>
+        <span className="rounded-full border border-status-true/25 bg-status-true/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-true">
+          Up to {bpsToMultiplier(topPayout)}
+        </span>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="space-y-6">
-          <div className="market-shell space-y-4 rounded-[28px] border border-border/80 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Conditions</h2>
-              <span className="text-xs text-muted-foreground">
-                <RollingNumber value={legsSettled} durationMs={300} className="font-mono" />/{data.numLegs} settled
-              </span>
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Market story</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{presentation.marketTitle}</h2>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">{presentation.scenario}</p>
+              </div>
+              <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3 text-right">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total staked</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{formatSol(data.totalStake)} SOL</p>
+              </div>
             </div>
-            <div className="h-1 w-full overflow-hidden rounded-full bg-secondary">
-              <div
-                className="h-full rounded-full bg-status-true transition-[width] duration-500"
-                style={{ width: `${(legsSettled / Math.max(1, data.numLegs)) * 100}%` }}
+          </div>
+
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Conditions</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">What has to happen</h2>
+              </div>
+              <span className="text-sm text-muted-foreground">{legsSettled}/{data.numLegs} settled</span>
+            </div>
+            <div className="mt-5 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+              <div className="h-full rounded-full bg-status-true transition-[width] duration-500" style={{ width: `${(legsSettled / data.numLegs) * 100}%` }} />
+            </div>
+            <div className="mt-5">
+              <LegStatusList
+                product={product}
+                legs={data.legs}
+                legResults={data.legResults}
+                closesAtUnixSeconds={Number(data.closesAt)}
+                canSettle={canSettle}
               />
             </div>
-            <LegStatusList
-              product={product}
-              legs={data.legs}
-              legResults={data.legResults}
-              closesAtUnixSeconds={Number(data.closesAt)}
-              canSettle={canSettle}
-            />
 
             {data.status === "open" && allSettled && (
-              <Button onClick={() => finalize.mutate(product)} disabled={finalize.isPending}>
-                {finalize.isPending ? "finalizing…" : "Finalize market"}
+              <Button onClick={() => finalize.mutate(product)} disabled={finalize.isPending} className="mt-5 rounded-full">
+                {finalize.isPending ? "Finalizing…" : "Finalize market"}
               </Button>
             )}
           </div>
 
-          <div className="market-shell space-y-3 rounded-[28px] border border-border/80 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Payout ladder</h2>
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Payout ladder</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">How the return climbs</h2>
+              </div>
               <span className="rounded-full border border-status-true/25 bg-status-true/10 px-3 py-1 text-xs font-semibold text-status-true">
-                Top tier {bpsToMultiplier(Math.max(...data.tiers.map((tier) => tier.payoutBps)))}
+                Top tier {bpsToMultiplier(topPayout)}
               </span>
             </div>
-            <div className="rounded-[24px] border border-border/70 bg-background/35 p-4">
+            <div className="mt-5 rounded-[26px] border border-border/70 bg-background/35 p-4">
               <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
             </div>
           </div>
 
-          <div className="market-shell rounded-[28px] border border-border/80 p-5 text-sm text-muted-foreground">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Proof-backed settlement</p>
-            Settlement is a permissionless CPI into TxLINE&rsquo;s on-chain proof verifier — anyone can
-            call it, no oracle to trust.{" "}
-            <a
-              href={`https://explorer.solana.com/address/${STRATA_PROGRAM_ID.toBase58()}?cluster=devnet`}
-              target="_blank"
-              rel="noreferrer"
-              className="font-mono text-foreground hover:underline"
-            >
-              {truncateAddress(STRATA_PROGRAM_ID.toBase58())}
-            </a>
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl border border-status-true/25 bg-status-true/10 p-2">
+                <ShieldCheck className="size-5 text-status-true" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Settlement and trust</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">Proof-backed by design</h2>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  Buyers do not need to trust an operator to tell them what happened. The proof flow exists so the settlement page can be audited after the match without making the browsing experience feel technical.
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* right: buy module for open markets, settled summary otherwise */}
-        <section className="space-y-3 lg:sticky lg:top-6 lg:self-start">
-          {data.status === "open" ? (
-            <TakePositionPanel
-              kind="tiered"
-              product={product}
-              totalStake={data.totalStake}
-              maxCapacity={data.maxCapacity}
-              tiers={data.tiers}
-              numLegs={data.numLegs}
-              legResults={data.legResults}
-            />
-          ) : (
-            <div className="market-shell rounded-[28px] border border-border/80 p-5 text-sm text-muted-foreground">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Settled market</p>
-              <p>
-                total staked <span className="font-mono text-status-true">{formatSol(data.totalStake)} SOL</span>
+        <section className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <TakePositionPanel
+            kind="tiered"
+            product={product}
+            totalStake={data.totalStake}
+            maxCapacity={data.maxCapacity}
+            tiers={data.tiers}
+            numLegs={data.numLegs}
+            legResults={data.legResults}
+            marketTitle={presentation.marketTitle}
+            matchLabel={`${presentation.homeTeam} vs ${presentation.awayTeam}`}
+          />
+
+          {data.status === "settled" && (
+            <div className="market-shell rounded-[28px] border border-border/80 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Market settled</p>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                This market already closed with a final payout of <span className="font-mono text-status-true">{bpsToMultiplier(data.finalPayoutBps)}</span>.
               </p>
+              <Link href={`/verify/${productAddress}`} className="btn-gradient mt-5 inline-flex min-h-11 items-center rounded-full px-5 py-2.5 text-sm font-semibold">
+                View receipt
+              </Link>
             </div>
           )}
         </section>
       </div>
-
-      {data.status === "settled" && (
-        <div className="rounded-lg border border-status-true/30 bg-status-true/5 p-4 text-sm">
-          <p>
-            Settled · payout <span className="font-mono text-status-true">{bpsToMultiplier(data.finalPayoutBps)}</span>
-          </p>
-          <Link href={`/verify/${productAddress}`} className="mt-2 inline-block underline">
-            Verify this settlement →
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

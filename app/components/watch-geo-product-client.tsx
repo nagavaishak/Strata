@@ -1,115 +1,85 @@
 "use client";
 
-import { PublicKey } from "@solana/web3.js";
 import Link from "next/link";
+import { PublicKey } from "@solana/web3.js";
+import { ArrowLeft } from "lucide-react";
+import { MatchIdentity } from "@/components/market-identity";
+import { TakePositionPanel } from "@/components/take-position-panel";
 import { Button } from "@/components/ui/button";
 import { useGeoProduct } from "@/lib/hooks/useGeoProduct";
 import { useSettleGeoProduct } from "@/lib/hooks/useGeoProductActions";
-import { TakePositionPanel } from "@/components/take-position-panel";
-import { truncateAddress } from "@/lib/format";
-import { STRATA_PROGRAM_ID } from "@/lib/constants";
-
-function comparisonSymbol(c: string) {
-  return c === "greaterThan" ? ">" : c === "lessThan" ? "<" : "=";
-}
+import { bpsToMultiplier, formatSol } from "@/lib/format";
+import { getGeoMarketPresentation } from "@/lib/market-presentation";
 
 export function WatchGeoProductClient({ productAddress }: { productAddress: string }) {
   const geoProduct = new PublicKey(productAddress);
   const { data, isLoading, isError } = useGeoProduct(geoProduct);
   const settle = useSettleGeoProduct();
 
-  if (isLoading) {
-    return <p className="p-6 text-sm text-muted-foreground">loading market…</p>;
-  }
-  if (isError || !data) {
-    return <p className="p-6 text-sm text-status-false">market not found at {productAddress}</p>;
-  }
+  if (isLoading) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading market…</div>;
+  if (isError || !data) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Market not found.</div>;
 
-  const now = Math.floor(Date.now() / 1000);
-  const canSettle = data.status === "open" && now >= Number(data.closesAt);
+  const presentation = getGeoMarketPresentation(data);
+  const canSettle = data.status === "open" && Math.floor(Date.now() / 1000) >= Number(data.closesAt);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-6 py-12">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Fixture {data.fixtureId.toString()}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Exact-outcome market · <span className="font-mono">{truncateAddress(productAddress)}</span>
-        </p>
-      </div>
+    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
+      <Link href="/markets" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" />
+        Back to markets
+      </Link>
 
-      <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3 text-xs">
-        <span className="text-muted-foreground">
-          status <span className="text-foreground">{data.status}</span>
-        </span>
-        {data.status === "open" && canSettle && (
-          <Button size="sm" variant="outline" onClick={() => settle.mutate(geoProduct)} disabled={settle.isPending}>
-            {settle.isPending ? "settling…" : "Settle now"}
-          </Button>
-        )}
-      </div>
+      <section className="market-shell rounded-[36px] border border-border/80 p-8">
+        <MatchIdentity presentation={presentation} eyebrow="Exact-outcome market" />
+      </section>
 
-      {settle.isError && <p className="text-xs text-status-false">{(settle.error as Error).message}</p>}
-
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="space-y-6">
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Prediction</h2>
-            <div className="rounded-lg border border-border bg-card p-4 text-sm">
-              <p>
-                Predicted stat {data.statKeyA} = {data.predictionA}, stat {data.statKeyB} = {data.predictionB}
-              </p>
-              <p className="mt-1 text-muted-foreground">
-                Wins if distance {comparisonSymbol(data.distanceComparison)} {data.distanceThreshold}
-              </p>
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Market setup</p>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">{presentation.scenario}</p>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Exact payout</p>
+                <p className="mt-2 text-2xl font-semibold text-status-true">{bpsToMultiplier(data.payoutBpsIfTrue)}</p>
+              </div>
+              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total staked</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{formatSol(data.totalStake)} SOL</p>
+              </div>
             </div>
-          </div>
-
-          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-            Settlement is a permissionless CPI into TxLINE&rsquo;s on-chain proof verifier — anyone can
-            call it, no oracle to trust.{" "}
-            <a
-              href={`https://explorer.solana.com/address/${STRATA_PROGRAM_ID.toBase58()}?cluster=devnet`}
-              target="_blank"
-              rel="noreferrer"
-              className="font-mono text-foreground hover:underline"
-            >
-              {truncateAddress(STRATA_PROGRAM_ID.toBase58())}
-            </a>
+            {canSettle ? (
+              <Button onClick={() => settle.mutate(geoProduct)} disabled={settle.isPending} className="mt-5 rounded-full">
+                {settle.isPending ? "Settling…" : "Settle exact-outcome market"}
+              </Button>
+            ) : null}
           </div>
         </section>
 
-        <section className="space-y-3 lg:sticky lg:top-6 lg:self-start">
-          {data.status === "open" && (
+        <section className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          {data.status === "open" ? (
             <TakePositionPanel
               kind="geo"
               product={geoProduct}
               totalStake={data.totalStake}
               maxCapacity={data.maxCapacity}
               payoutBpsIfTrue={data.payoutBpsIfTrue}
+              marketTitle={presentation.marketTitle}
+              matchLabel={`${presentation.homeTeam} vs ${presentation.awayTeam}`}
             />
+          ) : (
+            <div className="market-shell rounded-[30px] border border-border/80 p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Settled market</p>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                This exact-outcome market is closed. Review the final receipt to see how the resolution played out.
+              </p>
+              <Link href={`/verify/geo/${productAddress}`} className="btn-gradient mt-5 inline-flex min-h-11 items-center rounded-full px-5 py-2.5 text-sm font-semibold">
+                View receipt
+              </Link>
+            </div>
           )}
         </section>
       </div>
-
-      {data.status === "settled" && (
-        <div
-          className={`rounded-lg border p-4 text-sm ${
-            data.finalPayoutBps > 0
-              ? "border-status-true/30 bg-status-true/5"
-              : "border-status-false/30 bg-status-false/5"
-          }`}
-        >
-          <p>
-            {data.finalPayoutBps > 0 ? "Exact outcome matched" : "Did not match"} · payout{" "}
-            <span className={`font-mono ${data.finalPayoutBps > 0 ? "text-status-true" : "text-status-false"}`}>
-              {(data.finalPayoutBps / 10000).toFixed(2)}x
-            </span>
-          </p>
-          <Link href={`/verify/geo/${productAddress}`} className="mt-2 inline-block underline">
-            Verify this settlement →
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
