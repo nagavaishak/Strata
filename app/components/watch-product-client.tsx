@@ -80,62 +80,87 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
         </span>
       </section>
 
+      <section className="market-shell rounded-[24px] border border-border/80 p-3">
+        <div className="flex flex-wrap gap-2">
+          {["Market", "Rules", "Live", "Activity"].map((tab, index) => (
+            <div
+              key={tab}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                index === 0 ? "bg-card text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {tab}
+            </div>
+          ))}
+        </div>
+      </section>
+
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="space-y-6">
           <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Market story</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{presentation.marketTitle}</h2>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">{presentation.scenario}</p>
               </div>
-              <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3 text-right">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total staked</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">{formatSol(data.totalStake)} SOL</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total staked</p>
+                  <p className="mt-2 text-2xl font-semibold text-foreground">{formatSol(data.totalStake)} SOL</p>
+                </div>
+                <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current status</p>
+                  <p className="mt-2 text-2xl font-semibold text-status-true">
+                    {streamStatus?.live ? "Live" : data.status === "open" ? "Open" : "Settled"}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Conditions</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">What has to happen</h2>
+          <div className="grid gap-6 lg:grid-cols-[1fr_0.92fr]">
+            <div className="market-shell rounded-[30px] border border-border/80 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Conditions</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">What has to happen</h2>
+                </div>
+                <span className="text-sm text-muted-foreground">{legsSettled}/{data.numLegs} settled</span>
               </div>
-              <span className="text-sm text-muted-foreground">{legsSettled}/{data.numLegs} settled</span>
-            </div>
-            <div className="mt-5 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div className="h-full rounded-full bg-status-true transition-[width] duration-500" style={{ width: `${(legsSettled / data.numLegs) * 100}%` }} />
-            </div>
-            <div className="mt-5">
-              <LegStatusList
-                product={product}
-                legs={data.legs}
-                legResults={data.legResults}
-                closesAtUnixSeconds={Number(data.closesAt)}
-                canSettle={canSettle}
-              />
+              <div className="mt-5 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                <div className="h-full rounded-full bg-status-true transition-[width] duration-500" style={{ width: `${(legsSettled / data.numLegs) * 100}%` }} />
+              </div>
+              <div className="mt-5">
+                <LegStatusList
+                  product={product}
+                  legs={data.legs}
+                  legResults={data.legResults}
+                  closesAtUnixSeconds={Number(data.closesAt)}
+                  canSettle={canSettle}
+                />
+              </div>
+
+              {data.status === "open" && allSettled && (
+                <Button onClick={() => finalize.mutate(product)} disabled={finalize.isPending} className="mt-5 rounded-full">
+                  {finalize.isPending ? "Finalizing…" : "Finalize market"}
+                </Button>
+              )}
             </div>
 
-            {data.status === "open" && allSettled && (
-              <Button onClick={() => finalize.mutate(product)} disabled={finalize.isPending} className="mt-5 rounded-full">
-                {finalize.isPending ? "Finalizing…" : "Finalize market"}
-              </Button>
-            )}
-          </div>
-
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Payout ladder</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">How the return climbs</h2>
+            <div className="market-shell rounded-[30px] border border-border/80 p-6">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Payout ladder</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">How the return climbs</h2>
+                </div>
+                <span className="rounded-full border border-status-true/25 bg-status-true/10 px-3 py-1 text-xs font-semibold text-status-true">
+                  Top tier {bpsToMultiplier(topPayout)}
+                </span>
               </div>
-              <span className="rounded-full border border-status-true/25 bg-status-true/10 px-3 py-1 text-xs font-semibold text-status-true">
-                Top tier {bpsToMultiplier(topPayout)}
-              </span>
-            </div>
-            <div className="mt-5 rounded-[26px] border border-border/70 bg-background/35 p-4">
-              <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
+              <div className="mt-5 rounded-[26px] border border-border/70 bg-background/35 p-4">
+                <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
+              </div>
             </div>
           </div>
 

@@ -90,6 +90,8 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
     props.kind === "tiered"
       ? Math.max(...props.tiers.map((tier) => tier.payoutBps))
       : props.payoutBpsIfTrue;
+  const topReturnSol = Number.isFinite(amountValue) && amountValue > 0 ? (amountValue * topPayout) / 10000 : 0;
+  const feeEstimate = Number.isFinite(amountValue) && amountValue > 0 ? Math.max(0.0005, amountValue * 0.005) : 0.0005;
 
   const handleConfirm = () => {
     const amountSol = Number(amount);
@@ -112,7 +114,9 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Take a position</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">Buy into this market</h2>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+              {props.kind === "geo" ? "Buy exact outcome" : "Buy yes"}
+            </h2>
           </div>
           <div className="rounded-full border border-border/70 bg-background/45 px-3 py-1 text-sm font-semibold text-foreground">
             {bpsToMultiplier(topPayout)} top tier
@@ -185,7 +189,20 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
               <div className="mt-3">
                 <PayoutPreview amount={amountValue} props={props} />
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">Network fees are paid in SOL at wallet confirmation time.</p>
+              <div className="mt-4 space-y-2 border-t border-border/70 pt-3 text-xs">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Stake</span>
+                  <span className="font-mono text-foreground">{Number.isFinite(amountValue) ? amountValue.toFixed(4) : "0.0000"} SOL</span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Potential top payout</span>
+                  <span className="font-mono text-status-true">{topReturnSol.toFixed(4)} SOL</span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Estimated fee</span>
+                  <span className="font-mono">{feeEstimate.toFixed(4)} SOL</span>
+                </div>
+              </div>
             </div>
 
             <Button
@@ -225,6 +242,22 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
                 <p className="mt-2 text-2xl font-semibold text-status-true">{bpsToMultiplier(topPayout)}</p>
               </div>
             </div>
+            <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Price</span>
+                  <span className="font-mono text-foreground">{amount} SOL</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">You&apos;ll get back</span>
+                  <span className="font-mono text-status-true">{topReturnSol.toFixed(4)} SOL</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Estimated fee</span>
+                  <span className="font-mono text-foreground">{feeEstimate.toFixed(4)} SOL</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="rounded-b-[28px] border-t border-border/70 bg-background/35 px-6 py-4">
@@ -259,6 +292,10 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Top payout</span>
                   <span className="font-mono text-status-true">{bpsToMultiplier(topPayout)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Potential return</span>
+                  <span className="font-mono text-status-true">{topReturnSol.toFixed(4)} SOL</span>
                 </div>
               </div>
             </div>

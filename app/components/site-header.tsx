@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { HowItWorksDialog } from "@/components/how-it-works-dialog";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -17,7 +17,7 @@ function NavLink({ href, label, active }: { href: string; label: string; active:
   return (
     <Link
       href={href}
-      className={`inline-flex min-h-10 items-center rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+      className={`inline-flex min-h-10 items-center rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${
         active ? "bg-card text-foreground" : "text-muted-foreground hover:text-foreground"
       }`}
     >
@@ -33,72 +33,85 @@ function LiveLink() {
   return <NavLink href="/markets?filter=live" label="Live" active={active} />;
 }
 
+const CATEGORY_LINKS = [
+  ["Trending", "/markets"],
+  ["Football", "/markets"],
+  ["Soccer", "/markets"],
+  ["NFL", "/markets"],
+  ["NBA", "/markets"],
+  ["Tennis", "/markets"],
+  ["eSports", "/markets"],
+  ["More", "/markets"],
+] as const;
+
 export function SiteHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/92 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-[1400px] items-center gap-4 px-4 py-3">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-status-true/25 bg-status-true/10 text-lg font-bold text-status-true">
-            S
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/94 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-[1480px] items-center gap-4 px-4 py-3">
+        <Link href="/" className="flex shrink-0 items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-status-true/20 bg-status-true/10 text-status-true">
+            <span className="text-sm font-bold">S</span>
           </div>
-          <div>
-            <p className="text-lg font-semibold tracking-tight text-foreground">Strata</p>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Structured sports markets</p>
-          </div>
+          <span className="text-lg font-semibold tracking-tight text-foreground">strata</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex">
-          <NavLink href="/" label="Home" active={pathname === "/"} />
-          <NavLink href="/markets" label="Explore" active={pathname === "/markets"} />
+        <nav className="hidden items-center gap-1 xl:flex">
+          <NavLink href="/markets" label="Markets" active={pathname === "/markets"} />
           <Suspense fallback={<NavLink href="/markets?filter=live" label="Live" active={false} />}>
             <LiveLink />
           </Suspense>
           <NavLink href="/positions" label="Portfolio" active={pathname.startsWith("/positions")} />
+          <NavLink href="/" label="Home" active={pathname === "/"} />
+          <NavLink href="/create" label="Create" active={pathname.startsWith("/create")} />
+        </nav>
+
+        <div className="hidden min-w-[280px] flex-1 items-center gap-3 rounded-full border border-border/80 bg-card/55 px-4 py-2.5 xl:flex">
+          <Search className="size-4 text-muted-foreground" />
+          <input
+            className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            placeholder="Search markets, teams, players..."
+          />
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
           <HowItWorksDialog
             trigger={
               <button
                 type="button"
-                className="inline-flex min-h-10 items-center rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                className="hidden min-h-10 items-center rounded-full px-3.5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground lg:inline-flex"
               >
                 How it works
               </button>
             }
           />
-        </nav>
-
-        <div className="hidden flex-1 items-center gap-3 rounded-full border border-border/80 bg-card/60 px-4 py-3 xl:flex">
-          <Search className="size-4 text-muted-foreground" />
-          <input
-            className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-            placeholder="Search a match, market, or league"
-          />
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          <Link
-            href="/create"
-            className="hidden rounded-full border border-border/70 px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
-          >
-            Create
-          </Link>
           <StatusBadge />
           <WalletMultiButton />
+          <button
+            type="button"
+            aria-label="Open menu"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border/75 bg-card/50 text-muted-foreground xl:hidden"
+          >
+            <Menu className="size-4" />
+          </button>
         </div>
       </div>
 
       <div className="border-t border-border/60">
-        <div className="mx-auto flex max-w-[1400px] items-center gap-2 overflow-x-auto px-4 py-2 text-sm [&::-webkit-scrollbar]:hidden">
-          {["Trending", "Football", "Live now", "Structured", "Exact outcome", "Closing soon"].map((label, index) => (
-            <span
+        <div className="mx-auto flex max-w-[1480px] items-center gap-2 overflow-x-auto px-4 py-2 text-sm [&::-webkit-scrollbar]:hidden">
+          {CATEGORY_LINKS.map(([label, href], index) => (
+            <Link
               key={label}
-              className={`shrink-0 rounded-full px-3 py-1.5 ${
-                index === 0 ? "bg-card text-foreground" : "text-muted-foreground"
+              href={href}
+              className={`shrink-0 rounded-full px-3 py-1.5 transition-colors ${
+                index === 0
+                  ? "bg-card text-foreground"
+                  : "text-muted-foreground hover:bg-card/70 hover:text-foreground"
               }`}
             >
               {label}
-            </span>
+            </Link>
           ))}
         </div>
       </div>

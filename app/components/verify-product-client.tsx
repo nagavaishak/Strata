@@ -27,6 +27,7 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
   const presentation = getTieredMarketPresentation(data);
   const trueCount = data.legResults.filter((result) => result === "true").length;
   const recomputedPayout = position ? (position.stake * BigInt(data.finalPayoutBps)) / 10000n : 0n;
+  const settlementLabel = trueCount === data.numLegs ? "Won at top tier" : trueCount > 0 ? "Partial tier hit" : "No conditions hit";
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
@@ -38,11 +39,26 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
         <MatchIdentity presentation={presentation} eyebrow="Verification receipt" />
       </section>
 
+      <section className="market-shell rounded-[24px] border border-border/80 p-3">
+        <div className="flex flex-wrap gap-2">
+          {["Settlement", "Payout", "Verification"].map((tab, index) => (
+            <div
+              key={tab}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                index === 0 ? "bg-card text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {tab}
+            </div>
+          ))}
+        </div>
+      </section>
+
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <section className="space-y-6">
           <div className="market-shell rounded-[30px] border border-border/80 p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Receipt summary</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
               <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Result</p>
                 <p className="mt-2 text-2xl font-semibold text-foreground">{trueCount}/{data.numLegs} conditions hit</p>
@@ -55,16 +71,42 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Status</p>
                 <p className="mt-2 text-2xl font-semibold text-foreground">{data.status}</p>
               </div>
+              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Outcome</p>
+                <p className="mt-2 text-2xl font-semibold text-status-true">{settlementLabel}</p>
+              </div>
             </div>
           </div>
 
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Condition result</p>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              This market settled after {trueCount} of {data.numLegs} listed conditions were proven true. The payout ladder below shows exactly which tier that result unlocked.
-            </p>
-            <div className="mt-5 rounded-[24px] border border-border/70 bg-background/35 p-4">
-              <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
+          <div className="grid gap-6 lg:grid-cols-[1fr_0.92fr]">
+            <div className="market-shell rounded-[30px] border border-border/80 p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Condition result</p>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                This market settled after {trueCount} of {data.numLegs} listed conditions were proven true. The payout ladder below shows exactly which tier that result unlocked.
+              </p>
+              <div className="mt-5 rounded-[24px] border border-border/70 bg-background/35 p-4">
+                <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
+              </div>
+            </div>
+
+            <div className="market-shell rounded-[30px] border border-border/80 p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Payout calculation</p>
+              <div className="mt-4 rounded-[24px] border border-border/70 bg-background/35 p-4">
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Stake</span>
+                    <span className="font-mono text-foreground">{position ? formatSol(position.stake) : "0.0000"} SOL</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Payout tier</span>
+                    <span className="font-mono text-status-true">{bpsToMultiplier(data.finalPayoutBps)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border/70 pt-3">
+                    <span className="text-muted-foreground">You received</span>
+                    <span className="font-mono text-lg font-semibold text-status-true">{formatSol(recomputedPayout)} SOL</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

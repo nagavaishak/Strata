@@ -6,69 +6,31 @@ import { HowItWorksDialog } from "@/components/how-it-works-dialog";
 import { GeoProductCard, TieredProductCard } from "@/components/product-card";
 import { useAllGeoProducts, useAllProducts } from "@/lib/hooks/useAllProducts";
 import { dedupeByFixture } from "@/lib/dedupe-by-fixture";
-import { formatSol } from "@/lib/format";
-import { getFixturePresentation, getGeoMarketPresentation, getTieredMarketPresentation, type MarketPresentation } from "@/lib/market-presentation";
+import { bpsToMultiplier, formatSol } from "@/lib/format";
+import {
+  getFixturePresentation,
+  getGeoMarketPresentation,
+  getTieredMarketPresentation,
+  type MarketPresentation,
+} from "@/lib/market-presentation";
 
 const VALUE_PROPS = [
   {
     icon: Trophy,
     title: "Structured payouts",
-    body: "Buy one market with multiple match conditions and a real payout ladder instead of a simple yes-or-no bet.",
+    body: "Buy one market with multiple match conditions and a visible payout ladder instead of a single bare outcome.",
   },
   {
     icon: ShieldCheck,
     title: "Proof-backed settlement",
-    body: "Results are verified on-chain against TxLINE proofs, so the product feels trustworthy even for a first-time buyer.",
+    body: "Results are verified on-chain against TxLINE proofs, so the consumer surface feels trustworthy without becoming technical.",
   },
   {
     icon: TimerReset,
     title: "Live match context",
-    body: "Every featured market is presented like a real match opportunity, with teams, timing, and scenario framing first.",
+    body: "Every market is framed like a real football opportunity first: match, scenario, timing, and price before protocol detail.",
   },
 ];
-
-function FootballVisualCard({
-  title,
-  subtitle,
-  metric,
-  caption,
-}: {
-  title: string;
-  subtitle: string;
-  metric: string;
-  caption: string;
-}) {
-  return (
-    <div className="market-shell relative overflow-hidden rounded-[34px] border border-border/80 p-6">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(20,255,160,0.14),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(89,225,255,0.14),transparent_30%)]" />
-      <div className="relative flex min-h-[420px] flex-col justify-between">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-status-true">Featured spotlight</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{title}</h2>
-            <p className="mt-3 max-w-md text-sm leading-7 text-muted-foreground">{subtitle}</p>
-          </div>
-          <div className="rounded-full border border-status-true/25 bg-status-true/10 px-4 py-2 text-sm font-semibold text-status-true">
-            {metric}
-          </div>
-        </div>
-
-        <div className="pointer-events-none relative mx-auto mt-8 flex h-56 w-56 items-center justify-center rounded-full border border-white/10 bg-[radial-gradient(circle,rgba(255,255,255,0.07),transparent_65%)]">
-          <div className="absolute h-40 w-40 rounded-full border border-status-true/30" />
-          <div className="absolute h-28 w-28 rounded-full border border-status-true/20" />
-          <div className="absolute h-56 w-56 rounded-full border border-white/5" />
-          <div className="absolute h-72 w-72 rounded-full border border-white/5" />
-          <div className="relative h-24 w-24 rounded-full border border-status-true/35 bg-[radial-gradient(circle,rgba(20,255,160,0.2),rgba(13,16,24,0.9))] shadow-[0_0_80px_rgba(20,255,160,0.18)]" />
-        </div>
-
-        <div className="relative rounded-[28px] border border-border/70 bg-background/40 p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Why this works</p>
-          <p className="mt-2 text-sm leading-7 text-muted-foreground">{caption}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function HomePage() {
   const { data: tiered } = useAllProducts();
@@ -106,127 +68,164 @@ export default function HomePage() {
           shortScenario: "Curated structured market",
           category: "Featured football",
         };
+  const spotlightHref = spotlightTiered
+    ? `/watch/${spotlightTiered.address.toBase58()}`
+    : spotlightGeo
+      ? `/watch/geo/${spotlightGeo.address.toBase58()}`
+      : "/markets";
+  const spotlightTopPayout = spotlightTiered
+    ? bpsToMultiplier(Math.max(...spotlightTiered.data.tiers.map((tier) => tier.payoutBps)))
+    : spotlightGeo
+      ? bpsToMultiplier(spotlightGeo.data.payoutBpsIfTrue)
+      : "1.00x";
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-16 px-6 py-8 sm:py-10">
-      <section className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr] xl:items-stretch">
-        <div className="relative overflow-hidden rounded-[40px] border border-border/80 bg-[linear-gradient(180deg,rgba(12,15,22,0.92),rgba(16,20,30,0.82))] p-8 sm:p-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(20,255,160,0.18),transparent_28%),radial-gradient(circle_at_75%_10%,rgba(89,225,255,0.12),transparent_32%)]" />
-          <div className="relative flex h-full flex-col justify-between gap-10">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">
-                Consumer marketplace
-              </div>
-              <h1 className="mt-6 max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight text-white sm:text-6xl">
-                Buy the match
-                <br />
-                <span className="text-gradient">with structure, not guesswork.</span>
-              </h1>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-zinc-300">
-                Strata turns football markets into clear, tiered products. You see the conditions, the payout ladder,
-                and the settlement path before you ever connect a wallet.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/markets" className="btn-gradient inline-flex min-h-12 items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold">
-                  Explore markets
-                  <ArrowRight className="size-4" />
-                </Link>
-                <HowItWorksDialog
-                  trigger={
-                    <button
-                      type="button"
-                      className="inline-flex min-h-12 items-center rounded-full border border-border/80 bg-card/70 px-5 py-3 text-sm font-semibold text-foreground hover:bg-card"
-                    >
-                      How it works
-                    </button>
-                  }
-                />
-              </div>
-            </div>
+    <div className="mx-auto flex max-w-[1480px] flex-col gap-14 px-6 py-8 sm:py-10">
+      <section className="market-shell overflow-hidden rounded-[32px] border border-border/80">
+        <div className="grid xl:grid-cols-[1.12fr_0.88fr]">
+          <div className="relative overflow-hidden p-8 sm:p-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(20,255,160,0.18),transparent_28%),radial-gradient(circle_at_75%_10%,rgba(89,225,255,0.12),transparent_32%)]" />
+            <div className="hero-stadium-glow absolute inset-0 opacity-90" aria-hidden="true" />
+            <div className="hero-pitch-lines absolute inset-x-8 bottom-8 top-24 rounded-[28px] opacity-70" aria-hidden="true" />
+            <div className="relative flex h-full flex-col justify-between gap-10">
+              <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-end">
+                <div className="relative z-10">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">
+                    Live football markets • structured payouts
+                  </div>
+                  <h1 className="mt-6 max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight text-white sm:text-6xl">
+                    Predict football outcomes.
+                    <br />
+                    <span className="text-gradient">Not just the winners.</span>
+                  </h1>
+                  <p className="mt-6 max-w-2xl text-base leading-8 text-zinc-300">
+                    Real markets. Real stakes. Real-time. Back your edge on every match and scenario with clear payout ladders before you buy.
+                  </p>
+                  <div className="mt-8 flex flex-wrap gap-3">
+                    <Link href="/markets" className="btn-gradient inline-flex min-h-12 items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold">
+                      Explore markets
+                      <ArrowRight className="size-4" />
+                    </Link>
+                    <HowItWorksDialog
+                      trigger={
+                        <button
+                          type="button"
+                          className="inline-flex min-h-12 items-center rounded-full border border-border/80 bg-card/70 px-5 py-3 text-sm font-semibold text-foreground hover:bg-card"
+                        >
+                          How it works
+                        </button>
+                      }
+                    />
+                  </div>
+                </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[28px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Open markets</p>
-                <p className="mt-3 text-3xl font-semibold text-status-true">{openCount}</p>
+                <div className="relative hidden min-h-[360px] lg:block" aria-hidden="true">
+                  <div className="hero-player-wrap absolute inset-0">
+                    <div className="hero-player-shadow absolute bottom-0 left-1/2 h-10 w-52 -translate-x-1/2 rounded-full" />
+                    <div className="hero-player absolute bottom-0 left-1/2 -translate-x-1/2">
+                      <div className="hero-player-head absolute left-1/2 top-0 -translate-x-1/2" />
+                      <div className="hero-player-torso absolute left-1/2 top-12 -translate-x-1/2">
+                        <span className="hero-player-number">7</span>
+                      </div>
+                      <div className="hero-player-arm hero-player-arm-left absolute left-[calc(50%-104px)] top-[86px]" />
+                      <div className="hero-player-arm hero-player-arm-right absolute left-[calc(50%+58px)] top-[86px]" />
+                      <div className="hero-player-leg hero-player-leg-left absolute left-[calc(50%-64px)] top-[228px]" />
+                      <div className="hero-player-leg hero-player-leg-right absolute left-[calc(50%+12px)] top-[228px]" />
+                    </div>
+                    <div className="hero-lights hero-lights-left absolute left-6 top-10 h-28 w-28 rounded-full" />
+                    <div className="hero-lights hero-lights-right absolute right-8 top-5 h-32 w-32 rounded-full" />
+                  </div>
+                </div>
               </div>
-              <div className="rounded-[28px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Settled</p>
-                <p className="mt-3 text-3xl font-semibold text-foreground">{settledCount}</p>
-              </div>
-              <div className="rounded-[28px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total staked</p>
-                <p className="mt-3 text-3xl font-semibold text-foreground">{formatSol(totalStaked)} SOL</p>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-[28px] border border-border/70 bg-background/35 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Open markets</p>
+                  <p className="mt-3 text-3xl font-semibold text-status-true">{openCount}</p>
+                </div>
+                <div className="rounded-[28px] border border-border/70 bg-background/35 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Settled</p>
+                  <p className="mt-3 text-3xl font-semibold text-foreground">{settledCount}</p>
+                </div>
+                <div className="rounded-[28px] border border-border/70 bg-background/35 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total staked</p>
+                  <p className="mt-3 text-3xl font-semibold text-foreground">{formatSol(totalStaked)} SOL</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <FootballVisualCard
-          title={`${spotlightPresentation.homeTeam} vs ${spotlightPresentation.awayTeam}`}
-          subtitle={`${spotlightPresentation.marketTitle} is live as a premium structured football setup with clear scenario framing and tiered payouts.`}
-          metric={spotlightTiered ? "Tiered payout live" : "Exact outcome live"}
-          caption={spotlightPresentation.scenario}
-        />
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
-        <div className="market-shell rounded-[32px] border border-border/80 p-7">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Featured football market</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{spotlightPresentation.marketTitle}</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {spotlightPresentation.league} • {spotlightPresentation.homeTeam} vs {spotlightPresentation.awayTeam}
-              </p>
-            </div>
-            {spotlightTiered ? (
-              <Link href={`/watch/${spotlightTiered.address.toBase58()}`} className="btn-gradient inline-flex min-h-11 items-center rounded-full px-5 py-2.5 text-sm font-semibold">
+          <div className="border-l border-border/70 p-8 sm:p-10">
+            <div className="rounded-[28px] border border-border/80 bg-background/45 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Featured market</p>
+              <p className="mt-4 text-sm text-muted-foreground">{spotlightPresentation.league}</p>
+              <div className="mt-3 flex items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card/80 text-sm font-semibold text-foreground">
+                      {spotlightPresentation.homeTeam.slice(0, 2)}
+                    </div>
+                    <h2 className="text-3xl font-semibold tracking-tight text-foreground">
+                      {spotlightPresentation.homeTeam}
+                      <span className="px-3 text-muted-foreground">vs</span>
+                      {spotlightPresentation.awayTeam}
+                    </h2>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card/80 text-sm font-semibold text-foreground">
+                      {spotlightPresentation.awayTeam.slice(0, 2)}
+                    </div>
+                  </div>
+                  <p className="mt-2 text-base font-medium text-foreground">{spotlightPresentation.marketTitle}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{spotlightPresentation.kickoffLabel}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Top tier</p>
+                  <p className="mt-2 text-3xl font-semibold text-status-true">{spotlightTopPayout}</p>
+                </div>
+              </div>
+              <div className="mt-6 grid grid-cols-3 gap-3">
+                <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Yes</p>
+                  <p className="mt-2 text-lg font-semibold text-status-true">62c</p>
+                </div>
+                <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">No</p>
+                  <p className="mt-2 text-lg font-semibold text-foreground">38c</p>
+                </div>
+                <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Volume</p>
+                  <p className="mt-2 text-lg font-semibold text-foreground">$2.1M</p>
+                </div>
+              </div>
+              <div className="mt-5 rounded-[20px] border border-border/70 bg-background/30 p-4">
+                <p className="text-sm leading-7 text-muted-foreground">{spotlightPresentation.scenario}</p>
+              </div>
+              <div className="mt-5 rounded-[20px] border border-border/70 bg-background/30 p-4">
+                <div className="flex items-end gap-2">
+                  <div className="h-12 w-10 rounded-t-xl bg-status-true/25" />
+                  <div className="h-18 w-10 rounded-t-xl bg-status-true/55" />
+                  <div className="h-10 w-10 rounded-t-xl bg-cyan-400/30" />
+                  <div className="h-24 w-10 rounded-t-xl bg-status-true/80" />
+                  <div className="h-16 w-10 rounded-t-xl bg-cyan-400/45" />
+                  <div className="h-14 w-10 rounded-t-xl bg-status-true/40" />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">Live market pulse and payout movement preview.</p>
+              </div>
+              <Link href={spotlightHref} className="btn-gradient mt-5 inline-flex min-h-11 items-center rounded-full px-5 py-2.5 text-sm font-semibold">
                 Open market
               </Link>
-            ) : spotlightGeo ? (
-              <Link href={`/watch/geo/${spotlightGeo.address.toBase58()}`} className="btn-gradient inline-flex min-h-11 items-center rounded-full px-5 py-2.5 text-sm font-semibold">
-                Open market
-              </Link>
-            ) : null}
-          </div>
-
-          <div className="mt-7 grid gap-4 md:grid-cols-3">
-            <div className="rounded-[24px] border border-border/70 bg-background/40 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Match story</p>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{spotlightPresentation.context}</p>
-            </div>
-            <div className="rounded-[24px] border border-border/70 bg-background/40 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scenario</p>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{spotlightPresentation.scenario}</p>
-            </div>
-            <div className="rounded-[24px] border border-border/70 bg-background/40 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Built for</p>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                Beginners who want the market story in plain English before they ever touch settlement details.
-              </p>
             </div>
           </div>
-        </div>
-
-        <div className="space-y-4">
-          {VALUE_PROPS.map((item) => (
-            <div key={item.title} className="market-shell rounded-[28px] border border-border/80 p-5">
-              <item.icon className="size-5 text-status-true" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">{item.title}</h3>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.body}</p>
-            </div>
-          ))}
         </div>
       </section>
 
       <section>
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Explore now</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Featured markets</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">Markets worth opening first</h2>
           </div>
           <Link href="/markets" className="text-sm font-semibold text-muted-foreground hover:text-foreground">
-            View all markets
+            View all
           </Link>
         </div>
 
@@ -241,28 +240,17 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="market-shell rounded-[32px] border border-border/80 p-6 lg:col-span-2">
+      <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
+        <div className="market-shell rounded-[32px] border border-border/80 p-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Why Strata feels different</p>
           <div className="mt-6 grid gap-6 md:grid-cols-3">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">You buy a scenario</h3>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                Instead of asking only who wins, Strata lets you buy a richer match story with stacked conditions and a payout ladder.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">You see the ladder</h3>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                Best-case payout is always visible. The app keeps the math legible for new users rather than hiding it behind contract jargon.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">You can verify the ending</h3>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                Settlement remains on-chain and auditable, but it is framed as reassurance instead of the only thing the product talks about.
-              </p>
-            </div>
+            {VALUE_PROPS.map((item) => (
+              <div key={item.title}>
+                <item.icon className="size-5 text-status-true" />
+                <h3 className="mt-4 text-lg font-semibold text-foreground">{item.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.body}</p>
+              </div>
+            ))}
           </div>
         </div>
 

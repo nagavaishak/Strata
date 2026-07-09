@@ -9,24 +9,29 @@ import { LegEditor, emptyLeg } from "@/components/leg-editor";
 import { TierEditor, defaultTiers } from "@/components/tier-editor";
 import { WriterPoolPanel } from "@/components/writer-pool-panel";
 import { useCreateProduct, useDeposit } from "@/lib/hooks/useProductActions";
-import { getFixturePresentation } from "@/lib/market-presentation";
+import { describeTier, getCreateStudioSummary, getFixturePresentation } from "@/lib/market-presentation";
 import type { Leg, Tier } from "@/lib/hooks/useProduct";
 
 const STEPS = ["Match setup", "Conditions", "Payout ladder", "Review", "Create"];
 
 export default function CreatePage() {
-  const [fixtureId, setFixtureId] = useState("18175981");
-  const [closesInMinutes, setClosesInMinutes] = useState("45");
+  const [fixtureId, setFixtureId] = useState("17952170");
+  const [closesInMinutes, setClosesInMinutes] = useState("120");
   const [settleWindowMinutes, setSettleWindowMinutes] = useState("180");
-  const [maxCapacity, setMaxCapacity] = useState("1");
-  const [legs, setLegs] = useState<Leg[]>([emptyLeg()]);
-  const [tiers, setTiers] = useState<Tier[]>(defaultTiers(1));
+  const [maxCapacity, setMaxCapacity] = useState("3");
+  const [legs, setLegs] = useState<Leg[]>([
+    { ...emptyLeg(), statKeyA: 1, threshold: 0, comparison: "greaterThan" },
+    { ...emptyLeg(), statKeyA: 1, hasSecondStat: true, statKeyB: 2, threshold: 2.5, comparison: "greaterThan" },
+    { ...emptyLeg(), statKeyA: 2, threshold: 0, comparison: "greaterThan" },
+  ]);
+  const [tiers, setTiers] = useState<Tier[]>(defaultTiers(3));
   const [tiersTouched, setTiersTouched] = useState(false);
   const [depositAmount, setDepositAmount] = useState("0.05");
 
   const createProduct = useCreateProduct();
   const deposit = useDeposit();
   const fixture = useMemo(() => getFixturePresentation(fixtureId), [fixtureId]);
+  const conditionSummary = useMemo(() => getCreateStudioSummary(legs, fixtureId), [fixtureId, legs]);
   const topPayout = Math.max(...tiers.map((tier) => tier.payoutBps), 0);
 
   const handleLegsChange = (next: Leg[]) => {
@@ -67,7 +72,14 @@ export default function CreatePage() {
       <section className="market-shell rounded-[30px] border border-border/80 p-4">
         <div className="grid gap-3 md:grid-cols-5">
           {STEPS.map((step, index) => (
-            <div key={step} className={`rounded-full px-4 py-2 text-sm font-semibold ${index === 0 ? "bg-card text-foreground" : "text-muted-foreground"}`}>
+            <div
+              key={step}
+              className={`rounded-full border px-4 py-2 text-sm font-semibold ${
+                index === 0
+                  ? "border-status-true/30 bg-status-true/10 text-foreground"
+                  : "border-border/60 text-muted-foreground"
+              }`}
+            >
               {index + 1}. {step}
             </div>
           ))}
@@ -80,6 +92,9 @@ export default function CreatePage() {
 
           <div className="market-shell rounded-[30px] border border-border/80 p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">1. Match setup</p>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+              Start from a real football fixture so the market can drop straight into the browse and buy experience.
+            </p>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div>
                 <Label className="text-xs">Fixture ID</Label>
@@ -160,9 +175,12 @@ export default function CreatePage() {
         <section className="space-y-4 xl:sticky xl:top-24 xl:self-start">
           <div className="market-shell rounded-[30px] border border-border/80 p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Preview rail</p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{fixture.hero}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">{fixture.homeTeam} vs {fixture.awayTeam}</p>
-            <p className="mt-4 text-sm leading-7 text-muted-foreground">{fixture.context}</p>
+            <div className="mt-3 rounded-[26px] border border-border/70 bg-background/35 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">{fixture.league}</p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{fixture.hero}</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{fixture.homeTeam} vs {fixture.awayTeam}</p>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">{fixture.context}</p>
+            </div>
 
             <div className="mt-5 grid gap-3">
               <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
@@ -176,6 +194,34 @@ export default function CreatePage() {
               <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Top payout</p>
                 <p className="mt-2 text-lg font-semibold text-status-true">{(topPayout / 10000).toFixed(2)}x</p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[22px] border border-border/70 bg-background/35 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Condition logic</p>
+                <span className="rounded-full border border-status-true/20 bg-status-true/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-status-true">
+                  AND
+                </span>
+              </div>
+              <div className="mt-3 space-y-2">
+                {conditionSummary.map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-border/60 bg-card/70 px-3 py-2 text-sm text-foreground">
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[22px] border border-border/70 bg-background/35 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Payout view</p>
+              <div className="mt-3 space-y-2">
+                {tiers.map((tier, index) => (
+                  <div key={`${tier.minLegsTrue}-${index}`} className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/70 px-3 py-2 text-sm">
+                    <span className="text-foreground">{describeTier(tier.minLegsTrue, Math.max(1, legs.length))}</span>
+                    <span className="font-mono text-status-true">{(tier.payoutBps / 10000).toFixed(2)}x</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
