@@ -31,7 +31,7 @@ export function MatchIdentity({
         <div className="grid min-w-[340px] gap-4 rounded-[26px] border border-border/70 bg-background/40 px-5 py-5">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center text-center">
             <div className="flex flex-col items-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-card/75 text-lg font-semibold text-foreground">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/70 bg-card/75 text-lg font-semibold text-foreground">
                 {presentation.homeTeam.slice(0, 2)}
               </div>
               <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{presentation.sport}</p>
@@ -39,7 +39,7 @@ export function MatchIdentity({
             </div>
             <span className="px-4 text-sm text-muted-foreground">vs</span>
             <div className="flex flex-col items-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-card/75 text-lg font-semibold text-foreground">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/70 bg-card/75 text-lg font-semibold text-foreground">
                 {presentation.awayTeam.slice(0, 2)}
               </div>
               <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{presentation.category}</p>

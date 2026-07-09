@@ -25,7 +25,7 @@ function CardShell({ href, children }: { href: string; children: React.ReactNode
   return (
     <Link
       href={href}
-      className="market-shell group flex min-h-[248px] flex-col rounded-[22px] border border-border/80 p-4 transition-all duration-200 hover:-translate-y-1 hover:border-status-true/35"
+      className="market-shell group flex min-h-[236px] flex-col rounded-[22px] border border-border/80 p-4 transition-all duration-200 hover:-translate-y-1 hover:border-status-true/35"
     >
       {children}
     </Link>
@@ -52,7 +52,7 @@ function MarketCardHeader({
         <p className="mt-2 text-[15px] font-semibold tracking-tight text-foreground">
           {homeTeam} vs {awayTeam}
         </p>
-        <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+        <h3 className="mt-1 text-base font-semibold tracking-tight text-foreground">{title}</h3>
       </div>
       <span className="rounded-full border border-border/70 bg-background/45 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground">
         {status}
@@ -106,15 +106,15 @@ export function TieredProductCard({ entry, live }: { entry: ProductListEntry; li
 
       <div className="mt-3 grid grid-cols-3 gap-2">
         <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Yes</p>
-          <p className="mt-1 text-base font-semibold text-status-true">{bpsToMultiplier(topPayout)}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Payout</p>
+          <p className="mt-1 text-base font-semibold text-status-true">Up to {bpsToMultiplier(topPayout)}</p>
         </div>
         <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pool</p>
           <p className="mt-1 text-base font-semibold text-foreground">{formatSol(entry.data.totalStake)}</p>
         </div>
         <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Close</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{live ? "Live" : "Close"}</p>
           <p className="mt-1 text-sm font-semibold text-foreground">{entry.data.status === "open" ? formatSeconds(secondsLeft) : "Settled"}</p>
         </div>
       </div>
@@ -147,15 +147,15 @@ export function GeoProductCard({ entry, live }: { entry: GeoProductListEntry; li
 
       <div className="mt-3 grid grid-cols-3 gap-2">
         <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Yes</p>
-          <p className="mt-1 text-base font-semibold text-status-true">{bpsToMultiplier(entry.data.payoutBpsIfTrue)}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Payout</p>
+          <p className="mt-1 text-base font-semibold text-status-true">Up to {bpsToMultiplier(entry.data.payoutBpsIfTrue)}</p>
         </div>
         <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pool</p>
           <p className="mt-1 text-base font-semibold text-foreground">{formatSol(entry.data.totalStake)}</p>
         </div>
         <div className="rounded-[18px] border border-border/70 bg-background/35 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Close</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{live ? "Live" : "Close"}</p>
           <p className="mt-1 text-sm font-semibold text-foreground">{entry.data.status === "open" ? formatSeconds(secondsLeft) : "Settled"}</p>
         </div>
       </div>

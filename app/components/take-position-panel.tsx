@@ -92,6 +92,7 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
       : props.payoutBpsIfTrue;
   const topReturnSol = Number.isFinite(amountValue) && amountValue > 0 ? (amountValue * topPayout) / 10000 : 0;
   const feeEstimate = Number.isFinite(amountValue) && amountValue > 0 ? Math.max(0.0005, amountValue * 0.005) : 0.0005;
+  const estimatedBack = Math.max(topReturnSol - feeEstimate, 0);
 
   const handleConfirm = () => {
     const amountSol = Number(amount);
@@ -111,6 +112,11 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
   return (
     <>
       <div className="market-shell rounded-[30px] border border-border/80 p-5">
+        <div className="grid grid-cols-2 rounded-[20px] border border-border/70 bg-background/35 p-1">
+          <div className="rounded-[16px] bg-status-true/10 px-3 py-2 text-center text-sm font-semibold text-status-true">Buy Yes</div>
+          <div className="rounded-[16px] px-3 py-2 text-center text-sm font-semibold text-muted-foreground">Buy No</div>
+        </div>
+
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Take a position</p>
@@ -124,9 +130,15 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
         </div>
 
         <div className="mt-5 rounded-[24px] border border-border/70 bg-background/35 p-4">
-          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            <span>Capacity used</span>
-            <span>{(fill * 100).toFixed(0)}%</span>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Price</p>
+              <p className="mt-2 text-3xl font-semibold text-status-true">58c</p>
+            </div>
+            <div className="sm:text-right">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Capacity used</p>
+              <p className="mt-2 text-xl font-semibold text-foreground">{(fill * 100).toFixed(0)}%</p>
+            </div>
           </div>
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
             <div
@@ -171,7 +183,7 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
             </div>
 
             <div className="mt-4 rounded-[24px] border border-border/70 bg-background/35 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your amount</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Stake</p>
               <div className="mt-3 flex items-center gap-3">
                 <Input
                   type="number"
@@ -201,6 +213,10 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
                 <div className="flex items-center justify-between text-muted-foreground">
                   <span>Estimated fee</span>
                   <span className="font-mono">{feeEstimate.toFixed(4)} SOL</span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>You&apos;ll get back</span>
+                  <span className="font-mono text-foreground">{estimatedBack.toFixed(4)} SOL</span>
                 </div>
               </div>
             </div>
@@ -255,6 +271,10 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Estimated fee</span>
                   <span className="font-mono text-foreground">{feeEstimate.toFixed(4)} SOL</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">You&apos;ll get back</span>
+                  <span className="font-mono text-status-true">{estimatedBack.toFixed(4)} SOL</span>
                 </div>
               </div>
             </div>

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Menu, Search } from "lucide-react";
+import { ChevronDown, Menu, Search } from "lucide-react";
 import { HowItWorksDialog } from "@/components/how-it-works-dialog";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -58,13 +58,12 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-1 xl:flex">
-          <NavLink href="/markets" label="Markets" active={pathname === "/markets"} />
+          <NavLink href="/" label="Home" active={pathname === "/"} />
+          <NavLink href="/markets" label="Explore" active={pathname === "/markets"} />
           <Suspense fallback={<NavLink href="/markets?filter=live" label="Live" active={false} />}>
             <LiveLink />
           </Suspense>
           <NavLink href="/positions" label="Portfolio" active={pathname.startsWith("/positions")} />
-          <NavLink href="/" label="Home" active={pathname === "/"} />
-          <NavLink href="/create" label="Create" active={pathname.startsWith("/create")} />
         </nav>
 
         <div className="hidden min-w-[280px] flex-1 items-center gap-3 rounded-full border border-border/80 bg-card/55 px-4 py-2.5 xl:flex">
@@ -86,6 +85,14 @@ export function SiteHeader() {
               </button>
             }
           />
+          <Link
+            href="/create"
+            className={`hidden min-h-10 items-center rounded-full border border-border/70 px-3.5 py-2 text-sm font-semibold transition-colors lg:inline-flex ${
+              pathname.startsWith("/create") ? "bg-card text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Create
+          </Link>
           <StatusBadge />
           <WalletMultiButton />
           <button
@@ -113,6 +120,13 @@ export function SiteHeader() {
               {label}
             </Link>
           ))}
+          <button
+            type="button"
+            className="ml-auto hidden shrink-0 items-center gap-1 rounded-full border border-border/70 px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground lg:inline-flex"
+          >
+            More filters
+            <ChevronDown className="size-3.5" />
+          </button>
         </div>
       </div>
     </header>
