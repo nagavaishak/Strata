@@ -25,14 +25,14 @@ export function StatusBar({ children }: { children?: React.ReactNode }) {
     <div className="mt-auto border-t border-border/80 bg-background/92 px-4 py-2 text-xs text-muted-foreground backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 font-mono">
         <div className="flex items-center gap-3">
-          <span>strata / market rail</span>
-        {(tiered || geo) && (
-          <span className="hidden sm:inline">
-            <RollingNumber value={openCount} /> open ·{" "}
-            <RollingNumber value={Number(formatSol(totalStaked))} format={(n) => n.toFixed(2)} /> SOL staked
-          </span>
-        )}
-        {children}
+          <span>strata / live market rail</span>
+          {(tiered || geo) && (
+            <span className="hidden sm:inline">
+              <RollingNumber value={openCount} /> open ·{" "}
+              <RollingNumber value={Number(formatSol(totalStaked))} format={(n) => n.toFixed(2)} /> SOL staked
+            </span>
+          )}
+          {children}
         </div>
         <div className="flex items-center gap-3">
           <span>
