@@ -1,44 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { PublicKey } from "@solana/web3.js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { WriterPoolPanel } from "@/components/writer-pool-panel";
 import { LegEditor, emptyLeg } from "@/components/leg-editor";
 import { TierEditor, defaultTiers } from "@/components/tier-editor";
+import { WriterPoolPanel } from "@/components/writer-pool-panel";
 import { useCreateProduct, useDeposit } from "@/lib/hooks/useProductActions";
+import { getFixturePresentation } from "@/lib/market-presentation";
 import type { Leg, Tier } from "@/lib/hooks/useProduct";
 
-export default function BuildPage() {
+const STEPS = ["Match setup", "Conditions", "Payout ladder", "Review", "Create"];
+
+export default function CreatePage() {
   const [fixtureId, setFixtureId] = useState("18175981");
-  const [closesInMinutes, setClosesInMinutes] = useState("5");
-  const [settleWindowMinutes, setSettleWindowMinutes] = useState("30");
-  const [maxCapacity, setMaxCapacity] = useState("0.01");
+  const [closesInMinutes, setClosesInMinutes] = useState("45");
+  const [settleWindowMinutes, setSettleWindowMinutes] = useState("180");
+  const [maxCapacity, setMaxCapacity] = useState("1");
   const [legs, setLegs] = useState<Leg[]>([emptyLeg()]);
   const [tiers, setTiers] = useState<Tier[]>(defaultTiers(1));
   const [tiersTouched, setTiersTouched] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("0.05");
 
   const createProduct = useCreateProduct();
   const deposit = useDeposit();
-  const [depositAmount, setDepositAmount] = useState("0.001");
+  const fixture = useMemo(() => getFixturePresentation(fixtureId), [fixtureId]);
+  const topPayout = Math.max(...tiers.map((tier) => tier.payoutBps), 0);
 
   const handleLegsChange = (next: Leg[]) => {
     setLegs(next);
     if (!tiersTouched) setTiers(defaultTiers(next.length));
   };
 
-  const worstCasePayoutBps = tiers.reduce((max, t) => Math.max(max, t.payoutBps), 0);
-  const worstCaseCollateral = (Number(maxCapacity) * worstCasePayoutBps) / 10000;
-
   const handleCreate = () => {
     const now = Math.floor(Date.now() / 1000);
-    const nonce = now % 1_000_000;
     createProduct.mutate({
       fixtureId: BigInt(fixtureId),
-      nonce,
+      nonce: now % 1_000_000,
       legs,
       tiers,
       closesAtUnixSeconds: now + Number(closesInMinutes) * 60,
@@ -48,132 +48,139 @@ export default function BuildPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 px-6 py-12">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Create a market</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Combine up to 5 stat conditions into a tiered payout table. Not a yes/no bet —
-          the more legs come true, the higher the payout tier.{" "}
-          <Link href="/create/geo" className="underline">
-            Or predict an exact outcome →
+    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
+      <section className="market-shell rounded-[34px] border border-border/80 p-7">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Create market studio</p>
+        <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground">Design a structured football market</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
+              Keep the consumer surface clean while preserving Strata’s differentiator: creator-defined conditions with a transparent payout ladder.
+            </p>
+          </div>
+          <Link href="/create/geo" className="rounded-full border border-border/70 px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
+            Create exact-outcome market
           </Link>
-        </p>
-      </div>
-
-      <WriterPoolPanel />
-
-      <section className="space-y-3">
-        <h2 className="font-mono text-sm text-muted-foreground">fixture &amp; window</h2>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <Label className="text-xs">Fixture ID</Label>
-            <Input value={fixtureId} onChange={(e) => setFixtureId(e.target.value)} className="font-mono" />
-          </div>
-          <div>
-            <Label className="text-xs">Closes in (min)</Label>
-            <Input
-              type="number"
-              value={closesInMinutes}
-              onChange={(e) => setClosesInMinutes(e.target.value)}
-              className="font-mono"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">Settle window (min)</Label>
-            <Input
-              type="number"
-              value={settleWindowMinutes}
-              onChange={(e) => setSettleWindowMinutes(e.target.value)}
-              className="font-mono"
-            />
-          </div>
-        </div>
-        <div>
-          <Label className="text-xs">Max capacity (SOL)</Label>
-          <Input
-            type="number"
-            step="0.001"
-            value={maxCapacity}
-            onChange={(e) => setMaxCapacity(e.target.value)}
-            className="w-40 font-mono"
-          />
         </div>
       </section>
 
-      <section className="space-y-3">
-        <h2 className="font-mono text-sm text-muted-foreground">legs</h2>
-        <LegEditor legs={legs} onChange={handleLegsChange} />
+      <section className="market-shell rounded-[30px] border border-border/80 p-4">
+        <div className="grid gap-3 md:grid-cols-5">
+          {STEPS.map((step, index) => (
+            <div key={step} className={`rounded-full px-4 py-2 text-sm font-semibold ${index === 0 ? "bg-card text-foreground" : "text-muted-foreground"}`}>
+              {index + 1}. {step}
+            </div>
+          ))}
+        </div>
       </section>
 
-      <section className="space-y-3">
-        <h2 className="font-mono text-sm text-muted-foreground">payout tiers</h2>
-        <TierEditor
-          tiers={tiers}
-          numLegs={legs.length}
-          onChange={(t) => {
-            setTiersTouched(true);
-            setTiers(t);
-          }}
-        />
-        <p className="font-mono text-xs text-muted-foreground">
-          worst-case collateral reserved from your pool:{" "}
-          <span className="text-status-pending">{worstCaseCollateral.toFixed(5)} SOL</span>
-        </p>
-      </section>
+      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="space-y-6">
+          <WriterPoolPanel />
 
-      <Button onClick={handleCreate} disabled={createProduct.isPending} className="w-full">
-        {createProduct.isPending ? "creating…" : "Create product"}
-      </Button>
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">1. Match setup</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div>
+                <Label className="text-xs">Fixture ID</Label>
+                <Input value={fixtureId} onChange={(event) => setFixtureId(event.target.value)} className="mt-2 font-mono" />
+              </div>
+              <div>
+                <Label className="text-xs">Max capacity (SOL)</Label>
+                <Input type="number" step="0.001" value={maxCapacity} onChange={(event) => setMaxCapacity(event.target.value)} className="mt-2 font-mono" />
+              </div>
+              <div>
+                <Label className="text-xs">Closes in (minutes)</Label>
+                <Input type="number" value={closesInMinutes} onChange={(event) => setClosesInMinutes(event.target.value)} className="mt-2 font-mono" />
+              </div>
+              <div>
+                <Label className="text-xs">Settlement window (minutes)</Label>
+                <Input type="number" value={settleWindowMinutes} onChange={(event) => setSettleWindowMinutes(event.target.value)} className="mt-2 font-mono" />
+              </div>
+            </div>
+          </div>
 
-      {createProduct.isError && (
-        <p className="text-sm text-status-false">{(createProduct.error as Error).message}</p>
-      )}
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">2. Conditions</p>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+              Define the match conditions the buyer is really purchasing. Keep them understandable so the eventual consumer market stays easy to read.
+            </p>
+            <div className="mt-5">
+              <LegEditor legs={legs} onChange={handleLegsChange} />
+            </div>
+          </div>
 
-      {createProduct.isSuccess && (
-        <div className="space-y-3 rounded-lg border border-status-true/30 bg-status-true/5 p-4">
-          <p className="font-mono text-sm">
-            product created ·{" "}
-            <a
-              href={`https://explorer.solana.com/tx/${createProduct.data.sig}?cluster=devnet`}
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
-            >
-              {createProduct.data.sig.slice(0, 12)}…
-            </a>
-          </p>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              step="0.0001"
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-              className="w-32 font-mono"
-            />
-            <Button
-              variant="outline"
-              onClick={() =>
-                deposit.mutate({
-                  product: createProduct.data!.product,
-                  amountSol: Number(depositAmount),
-                })
-              }
-              disabled={deposit.isPending}
-            >
-              {deposit.isPending ? "depositing…" : "Deposit"}
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">3. Payout ladder</p>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+              Make the ladder feel intentional: enough upside to be attractive, but simple enough that a first-time buyer can understand it immediately.
+            </p>
+            <div className="mt-5">
+              <TierEditor
+                tiers={tiers}
+                numLegs={legs.length}
+                onChange={(value) => {
+                  setTiersTouched(true);
+                  setTiers(value);
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">4. Review and create</p>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+              This is still creator tooling, but the final artifact should look like something a retail user would confidently open on the homepage.
+            </p>
+            <Button onClick={handleCreate} disabled={createProduct.isPending} className="mt-5 min-h-12 rounded-full px-6">
+              {createProduct.isPending ? "Creating…" : "Create market"}
             </Button>
+
+            {createProduct.isSuccess ? (
+              <div className="mt-5 rounded-[24px] border border-status-true/30 bg-status-true/5 p-4">
+                <p className="text-sm font-semibold text-foreground">Market created successfully.</p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Input type="number" step="0.0001" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} className="max-w-40 font-mono" />
+                  <Button
+                    variant="outline"
+                    onClick={() => deposit.mutate({ product: createProduct.data.product, amountSol: Number(depositAmount) })}
+                    disabled={deposit.isPending}
+                  >
+                    {deposit.isPending ? "Depositing…" : "Seed with stake"}
+                  </Button>
+                  <Link href={`/watch/${createProduct.data.product.toBase58()}`} className="inline-flex min-h-10 items-center rounded-full border border-border/70 px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
+                    Open created market
+                  </Link>
+                </div>
+              </div>
+            ) : null}
           </div>
-          {deposit.isSuccess && (
-            <p className="font-mono text-xs text-status-true">deposit confirmed</p>
-          )}
-          <Link
-            href={`/watch/${createProduct.data.product.toBase58()}`}
-            className="inline-block text-sm underline"
-          >
-            01 Watch this product →
-          </Link>
-        </div>
-      )}
+        </section>
+
+        <section className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <div className="market-shell rounded-[30px] border border-border/80 p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Preview rail</p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{fixture.hero}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{fixture.homeTeam} vs {fixture.awayTeam}</p>
+            <p className="mt-4 text-sm leading-7 text-muted-foreground">{fixture.context}</p>
+
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Kickoff</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{fixture.kickoffLabel}</p>
+              </div>
+              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Conditions</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{legs.length}</p>
+              </div>
+              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Top payout</p>
+                <p className="mt-2 text-lg font-semibold text-status-true">{(topPayout / 10000).toFixed(2)}x</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
