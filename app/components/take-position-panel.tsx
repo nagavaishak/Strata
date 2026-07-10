@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { usePosition } from "@/lib/hooks/usePosition";
 import { useDeposit } from "@/lib/hooks/useProductActions";
 import { useDepositGeo } from "@/lib/hooks/useGeoProductActions";
-import { bpsToMultiplier, capacityFillFraction, formatSol } from "@/lib/format";
+import { bpsToMultiplier, capacityFillFraction, formatPercent, formatSol } from "@/lib/format";
 import type { LegResult, Tier } from "@/lib/hooks/useProduct";
 
 const QUICK_AMOUNTS = [0.01, 0.05, 0.1, 0.5];
@@ -90,6 +90,10 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
     props.kind === "tiered"
       ? Math.max(...props.tiers.map((tier) => tier.payoutBps))
       : props.payoutBpsIfTrue;
+  const topReturnSol = Number.isFinite(amountValue) && amountValue > 0 ? (amountValue * topPayout) / 10000 : 0;
+  const feeEstimate = Number.isFinite(amountValue) && amountValue > 0 ? Math.max(0.0005, amountValue * 0.005) : 0.0005;
+  const estimatedBack = Math.max(topReturnSol - feeEstimate, 0);
+  const capacityUsed = formatPercent(fill);
 
   const handleConfirm = () => {
     const amountSol = Number(amount);
@@ -109,22 +113,56 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
   return (
     <>
       <div className="market-shell rounded-[30px] border border-border/80 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Take a position</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">Buy into this market</h2>
+        <div className="flex rounded-[16px] border border-border/70 bg-background/35 p-1 text-[11px] font-semibold">
+          <div className="flex-1 rounded-[12px] bg-status-true/12 px-3 py-2 text-center text-status-true">Buy Yes</div>
+          <div className="flex-1 px-3 py-2 text-center text-muted-foreground">Buy No</div>
+        </div>
+
+        <div className="mt-4 space-y-3 text-[11px]">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span>Your balance</span>
+            <span className="font-semibold text-foreground">{publicKey ? "Connected" : "Wallet required"}</span>
           </div>
-          <div className="rounded-full border border-border/70 bg-background/45 px-3 py-1 text-sm font-semibold text-foreground">
-            {bpsToMultiplier(topPayout)} top tier
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span>Price</span>
+            <span className="text-[26px] font-semibold leading-none text-status-true">{bpsToMultiplier(topPayout)}</span>
           </div>
         </div>
 
-        <div className="mt-5 rounded-[24px] border border-border/70 bg-background/35 p-4">
-          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            <span>Capacity used</span>
-            <span>{(fill * 100).toFixed(0)}%</span>
+        <div className="mt-4 rounded-[20px] border border-border/70 bg-background/35 p-4">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Stake</p>
+          <div className="mt-3 flex items-center gap-3 rounded-[14px] border border-border/70 bg-card/75 px-4 py-3">
+            <span className="text-sm text-muted-foreground">{props.kind === "geo" ? "$" : ""}</span>
+            <Input
+              type="number"
+              step="0.0001"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              className="h-auto border-0 bg-transparent p-0 font-mono text-lg text-foreground shadow-none focus-visible:ring-0"
+            />
+            <span className="text-[10px] text-muted-foreground">SOL</span>
           </div>
-          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {QUICK_AMOUNTS.map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setAmount(value.toString())}
+                className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold transition-colors ${
+                  Number(amount) === value
+                    ? "border-status-true/50 bg-status-true/10 text-status-true"
+                    : "border-border/80 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {value} SOL
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-[20px] border border-border/70 bg-background/35 p-4">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
             <div
               className="h-full rounded-full transition-[width] duration-500"
               style={{
@@ -133,70 +171,38 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
               }}
             />
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
+          <div className="mt-3 space-y-2 text-[11px]">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Top payout</span>
+              <span className="font-mono text-status-true">{topReturnSol.toFixed(4)} SOL</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Est. fees</span>
+              <span className="font-mono">{feeEstimate.toFixed(4)} SOL</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>You&apos;ll get back</span>
+              <span className="font-mono text-foreground">{estimatedBack.toFixed(4)} SOL</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReviewOpen(true)}
+            disabled={!publicKey || !Number.isFinite(amountValue) || amountValue <= 0 || deposit.isPending}
+            className="btn-gradient mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-[14px] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Review Order
+          </button>
+          <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>Pool depth</span>
+            <span>{capacityUsed}</span>
+          </div>
+          <div className="mt-2 text-[10px] text-muted-foreground">
             {position
               ? `You already have ${formatSol(position.stake, 4)} SOL staked in this market.`
-              : "Pick an amount and review the payout before you confirm in your wallet."}
-          </p>
-        </div>
-
-        {!publicKey ? (
-          <div className="mt-5 rounded-[24px] border border-border/70 bg-background/35 p-4 text-sm text-muted-foreground">
-            Connect a wallet to review and buy this market.
+              : "Secured by on-chain settlement."}
           </div>
-        ) : (
-          <>
-            <div className="mt-5 rounded-[24px] border border-border/70 bg-background/35 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Quick stake</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {QUICK_AMOUNTS.map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setAmount(value.toString())}
-                    className={`min-h-10 rounded-full border px-3 py-1 text-xs font-mono transition-colors ${
-                      Number(amount) === value
-                        ? "border-status-true bg-status-true/10 text-status-true"
-                        : "border-border/80 text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {value} SOL
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-[24px] border border-border/70 bg-background/35 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your amount</p>
-              <div className="mt-3 flex items-center gap-3">
-                <Input
-                  type="number"
-                  step="0.0001"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  className="h-12 rounded-2xl border-border/80 bg-card/80 font-mono"
-                />
-                <span className="text-xs text-muted-foreground">SOL</span>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-[24px] border border-border/70 bg-background/35 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scenario preview</p>
-              <div className="mt-3">
-                <PayoutPreview amount={amountValue} props={props} />
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground">Network fees are paid in SOL at wallet confirmation time.</p>
-            </div>
-
-            <Button
-              onClick={() => setReviewOpen(true)}
-              disabled={!Number.isFinite(amountValue) || amountValue <= 0 || deposit.isPending}
-              className="mt-5 min-h-12 w-full rounded-full text-sm font-semibold"
-            >
-              Review order
-            </Button>
-          </>
-        )}
+        </div>
 
         {deposit.isError && <p className="mt-3 text-xs text-status-false">{(deposit.error as Error).message}</p>}
       </div>
@@ -223,6 +229,26 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
               <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Top payout</p>
                 <p className="mt-2 text-2xl font-semibold text-status-true">{bpsToMultiplier(topPayout)}</p>
+              </div>
+            </div>
+            <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Stake</span>
+                  <span className="font-mono text-foreground">{amount} SOL</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Potential top payout</span>
+                  <span className="font-mono text-status-true">{topReturnSol.toFixed(4)} SOL</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Estimated fee</span>
+                  <span className="font-mono text-foreground">{feeEstimate.toFixed(4)} SOL</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">You&apos;ll get back</span>
+                  <span className="font-mono text-status-true">{estimatedBack.toFixed(4)} SOL</span>
+                </div>
               </div>
             </div>
           </div>
@@ -259,6 +285,10 @@ export function TakePositionPanel(props: TieredProps | GeoProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Top payout</span>
                   <span className="font-mono text-status-true">{bpsToMultiplier(topPayout)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Potential return</span>
+                  <span className="font-mono text-status-true">{topReturnSol.toFixed(4)} SOL</span>
                 </div>
               </div>
             </div>

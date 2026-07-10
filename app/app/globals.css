@@ -227,10 +227,90 @@
 }
 .market-shell {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, white) 0%, var(--card) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, white) 0%, color-mix(in srgb, var(--card) 92%, black) 100%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
     0 22px 60px color-mix(in srgb, black 18%, transparent);
+}
+.hero-stadium-glow {
+  background:
+    radial-gradient(340px circle at 18% 16%, color-mix(in srgb, var(--accent-from) 22%, transparent), transparent 60%),
+    radial-gradient(420px circle at 84% 14%, color-mix(in srgb, var(--accent-to) 18%, transparent), transparent 62%),
+    linear-gradient(180deg, rgba(5, 13, 20, 0.08) 0%, rgba(5, 13, 20, 0.3) 34%, rgba(5, 13, 20, 0.84) 100%);
+}
+.hero-pitch-lines {
+  border: 1px solid color-mix(in srgb, white 6%, transparent);
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(5, 13, 20, 0.18) 24%, rgba(5, 13, 20, 0.82) 100%),
+    linear-gradient(90deg, transparent 49.6%, color-mix(in srgb, white 10%, transparent) 50%, transparent 50.4%),
+    radial-gradient(circle at 50% 72%, transparent 0 58px, color-mix(in srgb, white 8%, transparent) 58px 59px, transparent 60px);
+}
+.hero-player-wrap {
+  filter: drop-shadow(0 44px 70px rgba(0, 0, 0, 0.5));
+}
+.hero-player {
+  width: 300px;
+  height: 430px;
+}
+.hero-player-head {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(17, 25, 31, 0.96), rgba(8, 13, 18, 0.98));
+}
+.hero-player-torso {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 148px;
+  height: 174px;
+  border-radius: 34px 34px 28px 28px;
+  background:
+    linear-gradient(180deg, rgba(14, 30, 28, 0.95), rgba(10, 20, 19, 0.98)),
+    linear-gradient(90deg, transparent 0%, rgba(77, 255, 189, 0.16) 48%, transparent 52%);
+  border: 1px solid rgba(104, 255, 201, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    inset 0 -24px 40px rgba(0, 0, 0, 0.35);
+}
+.hero-player-number {
+  font-size: 4.25rem;
+  line-height: 1;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--accent-from) 90%, white);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--accent-from) 35%, transparent);
+}
+.hero-player-arm,
+.hero-player-leg {
+  background: linear-gradient(180deg, rgba(14, 30, 28, 0.96), rgba(7, 13, 17, 0.98));
+  border-radius: 999px;
+}
+.hero-player-arm {
+  width: 42px;
+  height: 154px;
+}
+.hero-player-arm-left {
+  transform: rotate(18deg);
+}
+.hero-player-arm-right {
+  transform: rotate(-18deg);
+}
+.hero-player-leg {
+  width: 46px;
+  height: 188px;
+}
+.hero-player-leg-left {
+  transform: rotate(9deg);
+}
+.hero-player-leg-right {
+  transform: rotate(-7deg);
+}
+.hero-player-shadow {
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.48) 0%, rgba(0, 0, 0, 0) 72%);
+}
+.hero-lights {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(92, 244, 209, 0.14) 34%, rgba(92, 244, 209, 0) 72%);
+  filter: blur(6px);
 }
 .market-chip {
   background-color: color-mix(in srgb, var(--surface-soft) 82%, transparent);

@@ -21,20 +21,64 @@ function CapacityBar({ fraction }: { fraction: number }) {
   );
 }
 
-function CardShell({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
+function CardShell({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link
       href={href}
-      className="market-shell group flex min-h-[360px] flex-col rounded-[30px] border border-border/80 p-5 transition-all duration-200 hover:-translate-y-1 hover:border-foreground/25"
+      className="market-shell group flex min-h-[218px] flex-col rounded-[18px] border border-border/80 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-status-true/35"
     >
       {children}
     </Link>
+  );
+}
+
+function MarketCardHeader({
+  league,
+  homeTeam,
+  awayTeam,
+  title,
+  status,
+}: {
+  league: string;
+  homeTeam: string;
+  awayTeam: string;
+  title: string;
+  status: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{league}</p>
+        <p className="mt-2 text-[13px] font-semibold tracking-tight text-foreground">
+          {homeTeam} vs {awayTeam}
+        </p>
+        <h3 className="mt-1 text-[12px] font-medium tracking-tight text-muted-foreground">{title}</h3>
+      </div>
+      <span className="rounded-full border border-border/70 bg-background/45 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-status-true">
+        {status}
+      </span>
+    </div>
+  );
+}
+
+function MarketCardFooter({
+  fill,
+  scenario,
+}: {
+  fill: number;
+  scenario: string;
+}) {
+  return (
+    <div className="mt-3 rounded-[18px] border border-border/70 bg-background/35 p-3">
+      <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <span>Pool depth</span>
+        <span>{(fill * 100).toFixed(0)}%</span>
+      </div>
+      <div className="mt-3">
+        <CapacityBar fraction={fill} />
+      </div>
+      <div className="mt-2 line-clamp-2 text-[10px] leading-4.5 text-muted-foreground">{scenario}</div>
+    </div>
   );
 }
 
@@ -48,46 +92,30 @@ export function TieredProductCard({ entry, live }: { entry: ProductListEntry; li
 
   return (
     <CardShell href={href}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">{presentation.sport}</p>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{presentation.marketTitle}</h3>
-          <p className="mt-2 text-sm text-muted-foreground">{presentation.marketLabel}</p>
-        </div>
-        <span className="rounded-full border border-border/70 bg-background/45 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
-          {MARKET_STATUS_LABEL[status]}
-        </span>
-      </div>
+      <MarketCardHeader
+        league={presentation.league}
+        homeTeam={presentation.homeTeam}
+        awayTeam={presentation.awayTeam}
+        title={presentation.marketTitle}
+        status={MARKET_STATUS_LABEL[status]}
+      />
 
-      <div className="mt-6 rounded-[24px] border border-border/70 bg-background/35 p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scenario</p>
-        <p className="mt-2 text-sm leading-7 text-muted-foreground">{presentation.scenario}</p>
-      </div>
+      <div className="mt-2 text-[10px] leading-5 text-muted-foreground">{presentation.scenario}</div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Top payout</p>
-          <p className="mt-2 text-2xl font-semibold text-status-true">{bpsToMultiplier(topPayout)}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="rounded-[14px] border border-border/70 bg-background/35 p-2.5">
+          <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Yes</p>
+          <p className="mt-1 text-[13px] font-semibold text-status-true">Up to {bpsToMultiplier(topPayout)}</p>
         </div>
-        <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Stake pool</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{formatSol(entry.data.totalStake)} SOL</p>
+        <div className="rounded-[14px] border border-border/70 bg-background/35 p-2.5">
+          <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{live ? "Live" : "Close"}</p>
+          <p className="mt-1 text-[12px] font-semibold text-foreground">{entry.data.status === "open" ? formatSeconds(secondsLeft) : "Settled"}</p>
         </div>
       </div>
 
-      <div className="mt-4 rounded-[24px] border border-border/70 bg-background/35 p-4">
-        <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          <span>Capacity used</span>
-          <span>{(fill * 100).toFixed(0)}%</span>
-        </div>
-        <div className="mt-3">
-          <CapacityBar fraction={fill} />
-        </div>
-        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{presentation.shortScenario}</span>
-          <span>{entry.data.status === "open" ? formatSeconds(secondsLeft) : "Settled"}</span>
-        </div>
-      </div>
+      <div className="mt-2 text-[9px] text-muted-foreground">{formatSol(entry.data.totalStake)} SOL pool</div>
+
+      <MarketCardFooter fill={fill} scenario={presentation.shortScenario} />
     </CardShell>
   );
 }
@@ -101,46 +129,30 @@ export function GeoProductCard({ entry, live }: { entry: GeoProductListEntry; li
 
   return (
     <CardShell href={href}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">{presentation.sport}</p>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{presentation.marketTitle}</h3>
-          <p className="mt-2 text-sm text-muted-foreground">{presentation.marketLabel}</p>
-        </div>
-        <span className="rounded-full border border-border/70 bg-background/45 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
-          {MARKET_STATUS_LABEL[status]}
-        </span>
-      </div>
+      <MarketCardHeader
+        league={presentation.league}
+        homeTeam={presentation.homeTeam}
+        awayTeam={presentation.awayTeam}
+        title={presentation.marketTitle}
+        status={MARKET_STATUS_LABEL[status]}
+      />
 
-      <div className="mt-6 rounded-[24px] border border-border/70 bg-background/35 p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scenario</p>
-        <p className="mt-2 text-sm leading-7 text-muted-foreground">{presentation.scenario}</p>
-      </div>
+      <div className="mt-2 text-[10px] leading-5 text-muted-foreground">{presentation.scenario}</div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Exact payout</p>
-          <p className="mt-2 text-2xl font-semibold text-status-true">{bpsToMultiplier(entry.data.payoutBpsIfTrue)}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="rounded-[14px] border border-border/70 bg-background/35 p-2.5">
+          <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Yes</p>
+          <p className="mt-1 text-[13px] font-semibold text-status-true">Up to {bpsToMultiplier(entry.data.payoutBpsIfTrue)}</p>
         </div>
-        <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Stake pool</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{formatSol(entry.data.totalStake)} SOL</p>
+        <div className="rounded-[14px] border border-border/70 bg-background/35 p-2.5">
+          <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{live ? "Live" : "Close"}</p>
+          <p className="mt-1 text-[12px] font-semibold text-foreground">{entry.data.status === "open" ? formatSeconds(secondsLeft) : "Settled"}</p>
         </div>
       </div>
 
-      <div className="mt-4 rounded-[24px] border border-border/70 bg-background/35 p-4">
-        <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          <span>Capacity used</span>
-          <span>{(fill * 100).toFixed(0)}%</span>
-        </div>
-        <div className="mt-3">
-          <CapacityBar fraction={fill} />
-        </div>
-        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{presentation.shortScenario}</span>
-          <span>{entry.data.status === "open" ? formatSeconds(secondsLeft) : "Settled"}</span>
-        </div>
-      </div>
+      <div className="mt-2 text-[9px] text-muted-foreground">{formatSol(entry.data.totalStake)} SOL pool</div>
+
+      <MarketCardFooter fill={fill} scenario={presentation.shortScenario} />
     </CardShell>
   );
 }

@@ -7,19 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LegEditor, emptyLeg } from "@/components/leg-editor";
 import { TierEditor, defaultTiers } from "@/components/tier-editor";
-import { WriterPoolPanel } from "@/components/writer-pool-panel";
 import { useCreateProduct, useDeposit } from "@/lib/hooks/useProductActions";
-import { getFixturePresentation } from "@/lib/market-presentation";
+import { describeTier, getCreateStudioSummary, getFixturePresentation } from "@/lib/market-presentation";
 import type { Leg, Tier } from "@/lib/hooks/useProduct";
 
-const STEPS = ["Match setup", "Conditions", "Payout ladder", "Review", "Create"];
+const STEPS = ["1 Conditions", "2 Payout Ladder", "3 Details", "4 Review"];
 
 export default function CreatePage() {
-  const [fixtureId, setFixtureId] = useState("18175981");
-  const [closesInMinutes, setClosesInMinutes] = useState("45");
+  const [fixtureId, setFixtureId] = useState("17952170");
+  const [closesInMinutes, setClosesInMinutes] = useState("120");
   const [settleWindowMinutes, setSettleWindowMinutes] = useState("180");
-  const [maxCapacity, setMaxCapacity] = useState("1");
-  const [legs, setLegs] = useState<Leg[]>([emptyLeg()]);
+  const [maxCapacity, setMaxCapacity] = useState("3");
+  const [legs, setLegs] = useState<Leg[]>([
+    { ...emptyLeg(), statKeyA: 1, threshold: 2.5, comparison: "greaterThan" },
+  ]);
   const [tiers, setTiers] = useState<Tier[]>(defaultTiers(1));
   const [tiersTouched, setTiersTouched] = useState(false);
   const [depositAmount, setDepositAmount] = useState("0.05");
@@ -27,7 +28,7 @@ export default function CreatePage() {
   const createProduct = useCreateProduct();
   const deposit = useDeposit();
   const fixture = useMemo(() => getFixturePresentation(fixtureId), [fixtureId]);
-  const topPayout = Math.max(...tiers.map((tier) => tier.payoutBps), 0);
+  const conditionSummary = useMemo(() => getCreateStudioSummary(legs, fixtureId), [fixtureId, legs]);
 
   const handleLegsChange = (next: Leg[]) => {
     setLegs(next);
@@ -48,99 +49,88 @@ export default function CreatePage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
-      <section className="market-shell rounded-[34px] border border-border/80 p-7">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Create market studio</p>
-        <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground">Design a structured football market</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-              Keep the consumer surface clean while preserving Strata’s differentiator: creator-defined conditions with a transparent payout ladder.
-            </p>
-          </div>
-          <Link href="/create/geo" className="rounded-full border border-border/70 px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
-            Create exact-outcome market
-          </Link>
-        </div>
-      </section>
-
-      <section className="market-shell rounded-[30px] border border-border/80 p-4">
-        <div className="grid gap-3 md:grid-cols-5">
+    <div className="mx-auto max-w-[1480px] space-y-6 px-6 py-8">
+      <section className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,oklch(0.07_0.004_260),oklch(0.07_0.004_260))] p-4 shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+        <div className="grid gap-2 md:grid-cols-4">
           {STEPS.map((step, index) => (
-            <div key={step} className={`rounded-full px-4 py-2 text-sm font-semibold ${index === 0 ? "bg-card text-foreground" : "text-muted-foreground"}`}>
-              {index + 1}. {step}
+            <div
+              key={step}
+              className={`pb-2 text-center text-[11px] font-bold ${
+                index === 0 ? "border-b-2 border-status-true text-white" : "text-muted-foreground"
+              }`}
+            >
+              {step}
             </div>
           ))}
         </div>
-      </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <section className="space-y-6">
-          <WriterPoolPanel />
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <StudioPanel title="Market Conditions">
+              <div className="mt-4 grid gap-4">
+                <Field label="Market Type">
+                  <Input value="Total Goals" readOnly className="border-white/10 bg-black/10 text-white" />
+                </Field>
+                <Field label="Select Match">
+                  <Input value={`${fixture.homeTeam} vs ${fixture.awayTeam}`} readOnly className="border-white/10 bg-black/10 text-white" />
+                </Field>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Fixture ID">
+                    <Input value={fixtureId} onChange={(event) => setFixtureId(event.target.value)} className="border-white/10 bg-black/10 text-white" />
+                  </Field>
+                  <Field label="Max Capacity">
+                    <Input value={maxCapacity} onChange={(event) => setMaxCapacity(event.target.value)} className="border-white/10 bg-black/10 text-white" />
+                  </Field>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Closes In (min)">
+                    <Input value={closesInMinutes} onChange={(event) => setClosesInMinutes(event.target.value)} className="border-white/10 bg-black/10 text-white" />
+                  </Field>
+                  <Field label="Settlement Window">
+                    <Input value={settleWindowMinutes} onChange={(event) => setSettleWindowMinutes(event.target.value)} className="border-white/10 bg-black/10 text-white" />
+                  </Field>
+                </div>
 
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">1. Match setup</p>
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <div>
-                <Label className="text-xs">Fixture ID</Label>
-                <Input value={fixtureId} onChange={(event) => setFixtureId(event.target.value)} className="mt-2 font-mono" />
+                <div>
+                  <Label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Conditions</Label>
+                  <div className="mt-3">
+                    <LegEditor legs={legs} onChange={handleLegsChange} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Payout Ladder</Label>
+                  <div className="mt-3">
+                    <TierEditor
+                      tiers={tiers}
+                      numLegs={legs.length}
+                      onChange={(value) => {
+                        setTiersTouched(true);
+                        setTiers(value);
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Max capacity (SOL)</Label>
-                <Input type="number" step="0.001" value={maxCapacity} onChange={(event) => setMaxCapacity(event.target.value)} className="mt-2 font-mono" />
-              </div>
-              <div>
-                <Label className="text-xs">Closes in (minutes)</Label>
-                <Input type="number" value={closesInMinutes} onChange={(event) => setClosesInMinutes(event.target.value)} className="mt-2 font-mono" />
-              </div>
-              <div>
-                <Label className="text-xs">Settlement window (minutes)</Label>
-                <Input type="number" value={settleWindowMinutes} onChange={(event) => setSettleWindowMinutes(event.target.value)} className="mt-2 font-mono" />
-              </div>
+            </StudioPanel>
+
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                className="inline-flex min-h-10 flex-1 items-center justify-center rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-muted-foreground"
+              >
+                Save Draft
+              </button>
+              <Button onClick={handleCreate} disabled={createProduct.isPending} className="btn-gradient min-h-10 flex-1 rounded-full px-4 py-2 text-sm font-semibold">
+                {createProduct.isPending ? "Creating…" : "Continue"}
+              </Button>
             </div>
-          </div>
-
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">2. Conditions</p>
-            <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              Define the match conditions the buyer is really purchasing. Keep them understandable so the eventual consumer market stays easy to read.
-            </p>
-            <div className="mt-5">
-              <LegEditor legs={legs} onChange={handleLegsChange} />
-            </div>
-          </div>
-
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">3. Payout ladder</p>
-            <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              Make the ladder feel intentional: enough upside to be attractive, but simple enough that a first-time buyer can understand it immediately.
-            </p>
-            <div className="mt-5">
-              <TierEditor
-                tiers={tiers}
-                numLegs={legs.length}
-                onChange={(value) => {
-                  setTiersTouched(true);
-                  setTiers(value);
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">4. Review and create</p>
-            <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              This is still creator tooling, but the final artifact should look like something a retail user would confidently open on the homepage.
-            </p>
-            <Button onClick={handleCreate} disabled={createProduct.isPending} className="mt-5 min-h-12 rounded-full px-6">
-              {createProduct.isPending ? "Creating…" : "Create market"}
-            </Button>
 
             {createProduct.isSuccess ? (
-              <div className="mt-5 rounded-[24px] border border-status-true/30 bg-status-true/5 p-4">
-                <p className="text-sm font-semibold text-foreground">Market created successfully.</p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <Input type="number" step="0.0001" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} className="max-w-40 font-mono" />
+              <div className="mt-4 rounded-[14px] border border-status-true/30 bg-status-true/5 p-4">
+                <p className="text-sm font-semibold text-white">Market created successfully.</p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Input value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} className="max-w-40 border-white/10 bg-black/10 text-white" />
                   <Button
                     variant="outline"
                     onClick={() => deposit.mutate({ product: createProduct.data.product, amountSol: Number(depositAmount) })}
@@ -148,37 +138,90 @@ export default function CreatePage() {
                   >
                     {deposit.isPending ? "Depositing…" : "Seed with stake"}
                   </Button>
-                  <Link href={`/watch/${createProduct.data.product.toBase58()}`} className="inline-flex min-h-10 items-center rounded-full border border-border/70 px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
+                  <Link href={`/watch/${createProduct.data.product.toBase58()}`} className="inline-flex min-h-10 items-center rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-muted-foreground">
                     Open created market
                   </Link>
                 </div>
               </div>
             ) : null}
           </div>
-        </section>
 
-        <section className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Preview rail</p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{fixture.marketTitle}</h2>
-            <p className="mt-4 text-sm leading-7 text-muted-foreground">{fixture.context}</p>
+          <div>
+            <StudioPanel title="Live Preview">
+              <div className="mt-4">
+                <div className="text-[22px] font-extrabold tracking-tight text-white">{fixture.hero}</div>
+                <div className="mt-1 text-[12px] text-muted-foreground">
+                  {fixture.homeTeam} vs {fixture.awayTeam}
+                </div>
+              </div>
 
-            <div className="mt-5 grid gap-3">
-              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Closes in</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">{closesInMinutes}m</p>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <PreviewCard title="If conditions met" rows={[["Yes", "100c"]]} />
+                <PreviewCard title="If not" rows={[["No", "100c"]]} />
               </div>
-              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Conditions</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">{legs.length}</p>
+
+              <div className="mt-4 space-y-2">
+                {conditionSummary.map((item) => (
+                  <div key={item.id} className="rounded-[10px] border border-white/8 bg-black/10 px-3 py-2 text-sm text-white">
+                    {item.label}
+                  </div>
+                ))}
               </div>
-              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Top payout</p>
-                <p className="mt-2 text-lg font-semibold text-status-true">{(topPayout / 10000).toFixed(2)}x</p>
+
+              <div className="mt-4 space-y-2">
+                {tiers.map((tier, index) => (
+                  <div key={`${tier.minLegsTrue}-${index}`} className="flex items-center justify-between rounded-[10px] border border-white/8 bg-black/10 px-3 py-2 text-sm">
+                    <span className="text-white">{describeTier(tier.minLegsTrue, Math.max(1, legs.length))}</span>
+                    <span className="font-mono text-status-true">{(tier.payoutBps / 10000).toFixed(2)}x</span>
+                  </div>
+                ))}
               </div>
-            </div>
+
+              <div className="mt-4 flex items-center justify-between text-[12px] text-muted-foreground">
+                <span>Estimated Liquidity</span>
+                <span className="text-white">High</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-[12px] text-muted-foreground">
+                <span>Category</span>
+                <span className="text-white">Total Goals</span>
+              </div>
+            </StudioPanel>
           </div>
-        </section>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function StudioPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,oklch(0.18_0.008_260),oklch(0.15_0.008_260))] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-status-true">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</Label>
+      <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+function PreviewCard({ title, rows }: { title: string; rows: Array<[string, string]> }) {
+  return (
+    <div className="rounded-[10px] border border-white/8 bg-black/10 p-3">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{title}</div>
+      <div className="mt-3 space-y-2">
+        {rows.map(([left, right]) => (
+          <div key={`${left}-${right}`} className="flex items-center justify-between text-sm">
+            <span className="text-white">{left}</span>
+            <span className="font-semibold text-white">{right}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

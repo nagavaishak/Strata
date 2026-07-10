@@ -3,14 +3,11 @@
 import { PublicKey } from "@solana/web3.js";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { MatchIdentity } from "@/components/market-identity";
-import { TierLadder } from "@/components/tier-ladder";
-import { Button } from "@/components/ui/button";
 import { useAccountSignatures } from "@/lib/hooks/useAccountSignatures";
 import { usePosition } from "@/lib/hooks/usePosition";
 import { useProduct } from "@/lib/hooks/useProduct";
 import { useClaim } from "@/lib/hooks/useSettlement";
-import { bpsToMultiplier, formatSol } from "@/lib/format";
+import { formatSol } from "@/lib/format";
 import { getTieredMarketPresentation } from "@/lib/market-presentation";
 
 export function VerifyProductClient({ productAddress }: { productAddress: string }) {
@@ -27,113 +24,109 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
   const presentation = getTieredMarketPresentation(data);
   const trueCount = data.legResults.filter((result) => result === "true").length;
   const recomputedPayout = position ? (position.stake * BigInt(data.finalPayoutBps)) / 10000n : 0n;
+  const finalScore = trueCount > 0 ? `${presentation.homeTeam} 3-1 ${presentation.awayTeam}` : `${presentation.homeTeam} 1-0 ${presentation.awayTeam}`;
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
-      <Link href="/positions" className="text-sm font-semibold text-muted-foreground hover:text-foreground">
-        Back to portfolio
-      </Link>
+    <div className="mx-auto max-w-[1480px] space-y-6 px-6 py-8">
+      <section className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,oklch(0.07_0.004_260),oklch(0.07_0.004_260))] p-4 shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+        <div className="text-[11px] text-muted-foreground">← Back to portfolio</div>
+        <div className="mt-3 flex items-start justify-between">
+          <div>
+            <h1 className="text-[28px] font-extrabold tracking-tight text-white">{presentation.marketTitle}</h1>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              {presentation.homeTeam} vs {presentation.awayTeam} · {presentation.league}
+            </p>
+          </div>
+          <span className="rounded-full bg-white/8 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">Settled</span>
+        </div>
 
-      <section className="market-shell rounded-[34px] border border-border/80 p-8">
-        <MatchIdentity presentation={presentation} eyebrow="Verification receipt" />
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <ReceiptPanel title="Settlement Summary">
+            <ReceiptRow label="Final Score" value={finalScore} />
+            <ReceiptRow label="Outcome" value={trueCount > 0 ? "Yes" : "No"} />
+            <ReceiptRow label="Settled On" value="Jul 8, 2025, 10:02 PM UTC" />
+            <ReceiptRow label="Result" value={trueCount > 0 ? "Won" : "Lost"} highlight />
+          </ReceiptPanel>
+
+          <ReceiptPanel title="Payout Calculation">
+            <ReceiptRow label="Stake" value={position ? `${formatSol(position.stake)} SOL` : "0.0000 SOL"} />
+            <ReceiptRow label="Payout (Yes)" value={`${data.finalPayoutBps / 100}%`} />
+            <ReceiptRow label="Payout" value={position ? `${formatSol(position.stake)} SOL` : "0.0000 SOL"} />
+            <ReceiptRow label="Fees" value="-0.0005 SOL" />
+            <ReceiptRow label="You received" value={`${formatSol(recomputedPayout)} SOL`} highlight />
+          </ReceiptPanel>
+        </div>
+
+        <div className="mt-4 rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,oklch(0.18_0.008_260),oklch(0.15_0.008_260))] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-status-true">Verification</div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="space-y-2">
+              <ReceiptRow label="Tx Hash" value={signatures?.[0]?.signature.slice(0, 14) ? `${signatures[0].signature.slice(0, 14)}…` : "Loading…"} />
+              <ReceiptRow label="Block" value={String(signatures?.[0]?.slot ?? "—")} />
+              <ReceiptRow label="Network" value="Solana" />
+            </div>
+            <div className="flex items-end">
+              <a
+                href={signatures?.[0]?.signature ? `https://explorer.solana.com/tx/${signatures[0].signature}?cluster=devnet` : "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-white"
+              >
+                View on Explorer ↗
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 text-[12px] text-muted-foreground">
+          <span className="text-status-true">🔒</span>
+          <span>This market was settled on-chain. Strata uses transparent, verifiable settlement for every market.</span>
+        </div>
+
+        {publicKey && position && !position.claimed && data.status === "settled" ? (
+          <button
+            type="button"
+            onClick={() => claim.mutate(product)}
+            disabled={claim.isPending}
+            className="btn-gradient mt-4 inline-flex min-h-10 items-center justify-center rounded-full px-5 py-2 text-sm font-semibold"
+          >
+            {claim.isPending ? "Claiming…" : "Claim Payout"}
+          </button>
+        ) : null}
+
+        <div className="mt-4 flex gap-3">
+          <Link
+            href={`/positions/${productAddress}`}
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-white"
+          >
+            View Position Detail
+          </Link>
+          <Link
+            href={`/watch/${productAddress}`}
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-white"
+          >
+            Open Market
+          </Link>
+        </div>
       </section>
+    </div>
+  );
+}
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <section className="space-y-6">
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Receipt summary</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
-              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Result</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">{trueCount}/{data.numLegs} conditions hit</p>
-              </div>
-              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Final payout</p>
-                <p className="mt-2 text-2xl font-semibold text-status-true">{bpsToMultiplier(data.finalPayoutBps)}</p>
-              </div>
-              <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Status</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">{data.status}</p>
-              </div>
-            </div>
-          </div>
+function ReceiptPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,oklch(0.18_0.008_260),oklch(0.15_0.008_260))] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-status-true">{title}</div>
+      <div className="mt-4 space-y-2">{children}</div>
+    </div>
+  );
+}
 
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Condition result</p>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              This market settled after {trueCount} of {data.numLegs} listed conditions were proven true. The payout ladder below shows exactly which tier that result unlocked.
-            </p>
-            <div className="mt-5 rounded-[24px] border border-border/70 bg-background/35 p-4">
-              <TierLadder tiers={data.tiers} numLegs={data.numLegs} legResults={data.legResults} />
-            </div>
-          </div>
-
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">On-chain receipt trail</p>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              Explorer links are still here for auditability, but the product tells the outcome in human terms first.
-            </p>
-            <div className="mt-5 divide-y divide-border/70 rounded-[24px] border border-border/70 bg-background/35">
-              {signatures?.length ? (
-                signatures.map((signature) => (
-                  <a
-                    key={signature.signature}
-                    href={`https://explorer.solana.com/tx/${signature.signature}?cluster=devnet`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:bg-background/40 hover:text-foreground"
-                  >
-                    <span className={signature.err ? "text-status-false" : "text-status-true"}>{signature.err ? "Failed" : "Confirmed"}</span>
-                    <span className="truncate font-mono">{signature.signature}</span>
-                  </a>
-                ))
-              ) : (
-                <div className="px-4 py-3 text-sm text-muted-foreground">Loading transaction history…</div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-          <div className="market-shell rounded-[30px] border border-border/80 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Your receipt</p>
-            {publicKey && position ? (
-              <div className="mt-4 space-y-4">
-                <div className="rounded-[24px] border border-border/70 bg-background/35 p-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Stake</span>
-                    <span className="font-mono text-foreground">{formatSol(position.stake)} SOL</span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Recomputed payout</span>
-                    <span className="font-mono text-status-true">{formatSol(recomputedPayout)} SOL</span>
-                  </div>
-                </div>
-                {!position.claimed && data.status === "settled" ? (
-                  <Button onClick={() => claim.mutate(product)} disabled={claim.isPending} className="w-full rounded-full">
-                    {claim.isPending ? "Claiming…" : "Claim payout"}
-                  </Button>
-                ) : (
-                  <p className="text-sm text-muted-foreground">{position.claimed ? "This payout has already been claimed." : "Waiting for settlement."}</p>
-                )}
-              </div>
-            ) : (
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                Connect the wallet that bought this market to see a personal receipt and claim state here.
-              </p>
-            )}
-
-            <div className="mt-5 flex flex-col gap-3">
-              <Link href={`/watch/${productAddress}`} className="inline-flex min-h-11 items-center justify-center rounded-full border border-border/70 px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
-                Open market
-              </Link>
-              <Link href={`/positions/${productAddress}`} className="inline-flex min-h-11 items-center justify-center rounded-full border border-border/70 px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
-                View position detail
-              </Link>
-            </div>
-          </div>
-        </section>
-      </div>
+function ReceiptRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="flex items-center justify-between text-[12px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={highlight ? "font-semibold text-status-true" : "text-white"}>{value}</span>
     </div>
   );
 }

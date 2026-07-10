@@ -7,8 +7,6 @@ import { usePosition } from "@/lib/hooks/usePosition";
 import { useProduct } from "@/lib/hooks/useProduct";
 import { TierLadder } from "@/components/tier-ladder";
 import { LegStatusList } from "@/components/leg-status-list";
-import { MatchIdentity } from "@/components/market-identity";
-import { Button } from "@/components/ui/button";
 import { bpsToMultiplier, formatSol } from "@/lib/format";
 import { getGeoMarketPresentation, getTieredMarketPresentation } from "@/lib/market-presentation";
 import { useClaim } from "@/lib/hooks/useSettlement";
@@ -23,9 +21,6 @@ export function PositionDetailClient({ productAddress }: { productAddress: strin
   const claim = useClaim();
   const claimGeo = useClaimGeo();
 
-  const isTiered = !!tiered.data;
-  const position = isTiered ? tieredPosition.data : geoPosition.data;
-
   if (tiered.isLoading || geo.isLoading) {
     return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading position…</div>;
   }
@@ -35,40 +30,36 @@ export function PositionDetailClient({ productAddress }: { productAddress: strin
   }
 
   if (tiered.data) {
+    const position = tieredPosition.data;
     const presentation = getTieredMarketPresentation(tiered.data);
     const topPayout = Math.max(...tiered.data.tiers.map((tier) => tier.payoutBps));
     const payout = position ? (position.stake * BigInt(tiered.data.finalPayoutBps || topPayout)) / 10000n : 0n;
 
     return (
-      <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
-        <Link href="/positions" className="text-sm font-semibold text-muted-foreground hover:text-foreground">
-          Back to portfolio
-        </Link>
-        <section className="market-shell rounded-[34px] border border-border/80 p-8">
-          <MatchIdentity presentation={presentation} eyebrow="Your position" />
-        </section>
-        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <section className="space-y-6">
-            <div className="market-shell rounded-[30px] border border-border/80 p-6">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Your exposure</p>
-              <div className="mt-4 grid gap-4 md:grid-cols-3">
-                <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Stake</p>
-                  <p className="mt-2 text-2xl font-semibold text-foreground">{position ? formatSol(position.stake) : "0.0000"} SOL</p>
-                </div>
-                <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Best case</p>
-                  <p className="mt-2 text-2xl font-semibold text-status-true">{bpsToMultiplier(topPayout)}</p>
-                </div>
-                <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current payout</p>
-                  <p className="mt-2 text-2xl font-semibold text-foreground">{position ? formatSol(payout) : "0.0000"} SOL</p>
-                </div>
-              </div>
+      <div className="mx-auto max-w-[1480px] space-y-6 px-6 py-8">
+        <section className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,oklch(0.07_0.004_260),oklch(0.07_0.004_260))] p-4 shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+          <div className="text-[11px] text-muted-foreground">← Back to portfolio</div>
+          <div className="mt-3 flex items-start justify-between">
+            <div>
+              <h1 className="text-[28px] font-extrabold tracking-tight text-white">{presentation.marketTitle}</h1>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                {presentation.homeTeam} vs {presentation.awayTeam} · {presentation.league}
+              </p>
             </div>
+            <span className="rounded-full border border-status-true/35 bg-status-true/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-status-true">
+              {tiered.data.status === "open" ? "Open" : "Settled"}
+            </span>
+          </div>
 
-            <div className="market-shell rounded-[30px] border border-border/80 p-6">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Live progress</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <Metric label="Stake" value={position ? `${formatSol(position.stake)} SOL` : "0.0000 SOL"} />
+            <Metric label="Price" value={bpsToMultiplier(topPayout)} />
+            <Metric label="To win" value={position ? `${formatSol(payout - position.stake)} SOL` : "0.0000 SOL"} />
+            <Metric label="Total payout" value={position ? `${formatSol(payout)} SOL` : "0.0000 SOL"} />
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <Panel title="Live Progress">
               <div className="mt-4">
                 <LegStatusList
                   product={product}
@@ -78,87 +69,117 @@ export function PositionDetailClient({ productAddress }: { productAddress: strin
                   canSettle={false}
                 />
               </div>
-            </div>
+            </Panel>
 
-            <div className="market-shell rounded-[30px] border border-border/80 p-6">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Payout ladder</p>
-              <div className="mt-4 rounded-[24px] border border-border/70 bg-background/35 p-4">
+            <Panel title="Payout Ladder">
+              <div className="mt-4 rounded-[12px] border border-white/8 bg-black/10 p-3">
                 <TierLadder tiers={tiered.data.tiers} numLegs={tiered.data.numLegs} legResults={tiered.data.legResults} />
               </div>
-            </div>
-          </section>
-
-          <section className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-            <div className="market-shell rounded-[30px] border border-border/80 p-6">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Actions</p>
-              <div className="mt-4 flex flex-col gap-3">
+              <div className="mt-4 space-y-2">
                 {tiered.data.status === "settled" && position && !position.claimed ? (
-                  <Button onClick={() => claim.mutate(product)} disabled={claim.isPending} className="rounded-full">
-                    {claim.isPending ? "Claiming…" : "Claim payout"}
-                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => claim.mutate(product)}
+                    disabled={claim.isPending}
+                    className="btn-gradient inline-flex min-h-10 w-full items-center justify-center rounded-full px-4 py-2 text-sm font-semibold"
+                  >
+                    {claim.isPending ? "Claiming…" : "Claim Payout"}
+                  </button>
                 ) : null}
-                <Link href={`/watch/${productAddress}`} className="inline-flex min-h-11 items-center justify-center rounded-full border border-border/70 px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
-                  Open market
-                </Link>
-                <Link href={`/verify/${productAddress}`} className="inline-flex min-h-11 items-center justify-center rounded-full border border-border/70 px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
-                  View receipt
+                <Link
+                  href={`/verify/${productAddress}`}
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-white"
+                >
+                  View Receipt
                 </Link>
               </div>
-            </div>
-          </section>
-        </div>
+            </Panel>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>Position ID #{position?.address.toBase58().slice(0, 8) ?? "—"}</span>
+            <span>Updates live. Delays may occur. Market must be resolved to claim.</span>
+          </div>
+        </section>
       </div>
     );
   }
 
   const geoData = geo.data!;
+  const geoPositionData = geoPosition.data;
   const presentation = getGeoMarketPresentation(geoData);
-  const payout = position ? (position.stake * BigInt(geoData.finalPayoutBps || geoData.payoutBpsIfTrue)) / 10000n : 0n;
+  const payout = geoPositionData ? (geoPositionData.stake * BigInt(geoData.finalPayoutBps || geoData.payoutBpsIfTrue)) / 10000n : 0n;
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
-      <Link href="/positions" className="text-sm font-semibold text-muted-foreground hover:text-foreground">
-        Back to portfolio
-      </Link>
-      <section className="market-shell rounded-[34px] border border-border/80 p-8">
-        <MatchIdentity presentation={presentation} eyebrow="Your exact-outcome position" />
-      </section>
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <section className="market-shell rounded-[30px] border border-border/80 p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Your exposure</p>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Stake</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{position ? formatSol(position.stake) : "0.0000"} SOL</p>
-            </div>
-            <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Exact payout</p>
-              <p className="mt-2 text-2xl font-semibold text-status-true">{bpsToMultiplier(geoData.payoutBpsIfTrue)}</p>
-            </div>
-            <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current payout</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{position ? formatSol(payout) : "0.0000"} SOL</p>
-            </div>
+    <div className="mx-auto max-w-[1480px] space-y-6 px-6 py-8">
+      <section className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,oklch(0.07_0.004_260),oklch(0.07_0.004_260))] p-4 shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+        <div className="text-[11px] text-muted-foreground">← Back to portfolio</div>
+        <div className="mt-3 flex items-start justify-between">
+          <div>
+            <h1 className="text-[28px] font-extrabold tracking-tight text-white">{presentation.marketTitle}</h1>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              {presentation.homeTeam} vs {presentation.awayTeam} · {presentation.league}
+            </p>
           </div>
-        </section>
+          <span className="rounded-full border border-status-true/35 bg-status-true/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-status-true">
+            {geoData.status === "open" ? "Open" : "Settled"}
+          </span>
+        </div>
 
-        <section className="market-shell rounded-[30px] border border-border/80 p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Actions</p>
-          <div className="mt-4 flex flex-col gap-3">
-            {geoData.status === "settled" && position && !position.claimed ? (
-              <Button onClick={() => claimGeo.mutate(product)} disabled={claimGeo.isPending} className="rounded-full">
-                {claimGeo.isPending ? "Claiming…" : "Claim payout"}
-              </Button>
-            ) : null}
-            <Link href={`/watch/geo/${productAddress}`} className="inline-flex min-h-11 items-center justify-center rounded-full border border-border/70 px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
-              Open market
-            </Link>
-            <Link href={`/verify/geo/${productAddress}`} className="inline-flex min-h-11 items-center justify-center rounded-full border border-border/70 px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
-              View receipt
-            </Link>
-          </div>
-        </section>
-      </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <Metric label="Stake" value={geoPositionData ? `${formatSol(geoPositionData.stake)} SOL` : "0.0000 SOL"} />
+          <Metric label="Price" value={bpsToMultiplier(geoData.payoutBpsIfTrue)} />
+          <Metric label="To win" value={geoPositionData ? `${formatSol(payout - geoPositionData.stake)} SOL` : "0.0000 SOL"} />
+          <Metric label="Total payout" value={geoPositionData ? `${formatSol(payout)} SOL` : "0.0000 SOL"} />
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Panel title="Live Progress">
+            <div className="mt-4 text-sm text-muted-foreground">
+              Exact-outcome markets resolve into a single final result rather than a multi-step leg ladder.
+            </div>
+          </Panel>
+
+          <Panel title="Actions">
+            <div className="mt-4 space-y-2">
+              {geoData.status === "settled" && geoPositionData && !geoPositionData.claimed ? (
+                <button
+                  type="button"
+                  onClick={() => claimGeo.mutate(product)}
+                  disabled={claimGeo.isPending}
+                  className="btn-gradient inline-flex min-h-10 w-full items-center justify-center rounded-full px-4 py-2 text-sm font-semibold"
+                >
+                  {claimGeo.isPending ? "Claiming…" : "Claim Payout"}
+                </button>
+              ) : null}
+              <Link
+                href={`/verify/geo/${productAddress}`}
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-white"
+              >
+                View Receipt
+              </Link>
+            </div>
+          </Panel>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[12px] border border-white/8 bg-[linear-gradient(180deg,oklch(0.18_0.008_260),oklch(0.15_0.008_260))] px-3 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className="mt-2 text-[18px] font-bold text-white">{value}</div>
+    </div>
+  );
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,oklch(0.18_0.008_260),oklch(0.15_0.008_260))] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-status-true">{title}</div>
+      {children}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { useAllGeoProducts, useAllProducts, useMyPositions } from "@/lib/hooks/u
 import { formatSol } from "@/lib/format";
 import { getGeoMarketPresentation, getTieredMarketPresentation } from "@/lib/market-presentation";
 
-type PositionTab = "open" | "claimable" | "settled";
+type PositionTab = "open" | "pending" | "settled" | "activity";
 
 export default function PositionsPage() {
   const { publicKey } = useWallet();
@@ -22,32 +22,36 @@ export default function PositionsPage() {
         const tieredMatch = (tiered ?? []).find((entry) => entry.address.equals(position.product));
         if (tieredMatch) {
           const presentation = getTieredMarketPresentation(tieredMatch.data);
+          const payout = (position.stake * BigInt(Math.max(...tieredMatch.data.tiers.map((tier) => tier.payoutBps)))) / 10000n;
+
           return {
             address: position.address.toBase58(),
             productAddress: position.product.toBase58(),
-            kind: "tiered" as const,
             title: presentation.marketTitle,
-            matchLabel: presentation.shortScenario,
+            matchLabel: `${presentation.homeTeam} vs ${presentation.awayTeam}`,
+            outcome: "Yes",
+            stake: position.stake,
+            payout,
             status: tieredMatch.data.status,
             claimed: position.claimed,
-            stake: position.stake,
-            topPayout: Math.max(...tieredMatch.data.tiers.map((tier) => tier.payoutBps)),
           };
         }
 
         const geoMatch = (geo ?? []).find((entry) => entry.address.equals(position.product));
         if (geoMatch) {
           const presentation = getGeoMarketPresentation(geoMatch.data);
+          const payout = (position.stake * BigInt(geoMatch.data.payoutBpsIfTrue)) / 10000n;
+
           return {
             address: position.address.toBase58(),
             productAddress: position.product.toBase58(),
-            kind: "geo" as const,
             title: presentation.marketTitle,
-            matchLabel: presentation.shortScenario,
+            matchLabel: `${presentation.homeTeam} vs ${presentation.awayTeam}`,
+            outcome: "Yes",
+            stake: position.stake,
+            payout,
             status: geoMatch.data.status,
             claimed: position.claimed,
-            stake: position.stake,
-            topPayout: geoMatch.data.payoutBpsIfTrue,
           };
         }
 
@@ -57,120 +61,138 @@ export default function PositionsPage() {
   }, [geo, positions, tiered]) as Array<{
     address: string;
     productAddress: string;
-    kind: "tiered" | "geo";
     title: string;
     matchLabel: string;
+    outcome: string;
+    stake: bigint;
+    payout: bigint;
     status: "open" | "settled";
     claimed: boolean;
-    stake: bigint;
-    topPayout: number;
   }>;
 
-  const filtered = items.filter((item) => {
-    if (tab === "open") return item.status === "open";
-    if (tab === "claimable") return item.status === "settled" && !item.claimed;
-    return item.status === "settled";
-  });
+  const openItems = items.filter((item) => item.status === "open");
+  const pendingItems = items.filter((item) => item.status === "settled" && !item.claimed);
+  const settledItems = items.filter((item) => item.status === "settled");
+  const filtered =
+    tab === "open" ? openItems : tab === "pending" ? pendingItems : tab === "settled" ? settledItems : items;
 
   const totalStaked = items.reduce((sum, item) => sum + item.stake, 0n);
-  const liveCount = items.filter((item) => item.status === "open").length;
-  const claimableCount = items.filter((item) => item.status === "settled" && !item.claimed).length;
+  const totalPayout = items.reduce((sum, item) => sum + item.payout, 0n);
+  const settledPnl = settledItems.reduce((sum, item) => sum + item.payout - item.stake, 0n);
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
-      <section className="market-shell rounded-[34px] border border-border/80 p-7">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Portfolio</p>
-        <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground">Track what you own</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-              See live positions, settled outcomes, and claimable receipts in one place, without needing to decode raw on-chain accounts.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total staked</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{formatSol(totalStaked)} SOL</p>
-            </div>
-            <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Live positions</p>
-              <p className="mt-2 text-2xl font-semibold text-status-true">{liveCount}</p>
-            </div>
-            <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Claimable</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{claimableCount}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
+    <div className="mx-auto max-w-[1480px] space-y-6 px-6 py-8">
       {!publicKey ? (
-        <section className="market-shell rounded-[30px] border border-border/80 p-8 text-center">
-          <h2 className="text-2xl font-semibold text-foreground">Connect a wallet to view your portfolio</h2>
+        <section className="market-shell rounded-[20px] border border-border/80 p-8 text-center">
+          <h1 className="text-2xl font-semibold text-foreground">Connect a wallet to see your portfolio</h1>
           <p className="mt-3 text-sm leading-7 text-muted-foreground">
-            Once connected, you’ll see open positions, settled outcomes, and receipt-ready claim states here.
+            Once connected, your open positions, pending receipts, and settled outcomes will appear here.
           </p>
         </section>
       ) : (
-        <>
-          <section className="market-shell rounded-[30px] border border-border/80 p-4">
-            <div className="flex flex-wrap gap-2">
-              {(["open", "claimable", "settled"] as PositionTab[]).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setTab(value)}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                    tab === value ? "bg-card text-foreground" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {value.charAt(0).toUpperCase() + value.slice(1)}
-                </button>
-              ))}
+        <section className="overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,oklch(0.08_0.004_260),oklch(0.07_0.004_260))] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+          <div className="flex items-center gap-2 border-b border-white/8 px-4 py-3">
+            <span className="flex h-4 w-4 items-center justify-center rounded bg-status-true text-[8px] font-extrabold text-black">S</span>
+            <span className="text-[10px] font-bold text-white">strata</span>
+            <div className="ml-3 hidden gap-3 text-[7px] font-semibold text-muted-foreground md:flex">
+              <span>Markets</span>
+              <span>Live</span>
+              <span className="text-white">Portfolio</span>
+              <span>Create</span>
             </div>
-          </section>
+          </div>
 
-          {isLoading ? (
-            <div className="market-shell rounded-[30px] border border-border/80 p-8 text-sm text-muted-foreground">Loading positions…</div>
-          ) : filtered.length ? (
-            <section className="market-shell overflow-hidden rounded-[30px] border border-border/80">
-              <div className="hidden grid-cols-[1.4fr_1fr_0.7fr_0.7fr_0.7fr] gap-4 border-b border-border/70 px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:grid">
-                <span>Market</span>
-                <span>Match</span>
-                <span>Stake</span>
-                <span>Top payout</span>
-                <span />
+          <div className="grid gap-3 px-4 pt-4 md:grid-cols-4">
+            <SummaryCard label="Total Balance" value={`${formatSol(totalStaked)} SOL`} />
+            <SummaryCard label="Open Positions" value={`${openItems.length}`} sub={`${formatSol(totalStaked)} SOL at risk`} />
+            <SummaryCard label="Potential Payout" value={`${formatSol(totalPayout)} SOL`} />
+            <SummaryCard label="Settled P&L" value={`${settledPnl >= 0n ? "+" : ""}${formatSol(settledPnl)} SOL`} positive />
+          </div>
+
+          <div className="flex gap-4 px-4 pt-4 text-[11px] font-bold">
+            {([
+              ["open", `Open (${openItems.length})`],
+              ["pending", `Pending (${pendingItems.length})`],
+              ["settled", "Settled"],
+              ["activity", "Activity"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTab(value)}
+                className={`border-b-2 pb-2 transition-colors ${
+                  tab === value ? "border-status-true text-white" : "border-transparent text-muted-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="px-4 pb-4 pt-3">
+            {isLoading ? (
+              <div className="rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,oklch(0.18_0.008_260),oklch(0.15_0.008_260))] p-4 text-sm text-muted-foreground">
+                Loading positions…
               </div>
-              <div className="divide-y divide-border/70">
+            ) : filtered.length ? (
+              <div className="overflow-hidden rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,oklch(0.18_0.008_260),oklch(0.15_0.008_260))]">
+                <div className="grid grid-cols-[1.5fr_1.25fr_0.7fr_0.8fr_0.9fr_0.8fr] gap-3 border-b border-white/7 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  <span>Market</span>
+                  <span>Match</span>
+                  <span>Out.</span>
+                  <span>Stake</span>
+                  <span>Payout</span>
+                  <span>Status</span>
+                </div>
                 {filtered.map((item) => (
-                  <div key={item.address} className="grid gap-4 px-6 py-5 md:grid-cols-[1.4fr_1fr_0.7fr_0.7fr_0.7fr] md:items-center">
-                    <div>
-                      <p className="text-base font-semibold text-foreground">{item.title}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{item.kind === "tiered" ? "Structured market" : "Exact outcome"}</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{item.matchLabel}</p>
-                    <p className="font-mono text-sm text-foreground">{formatSol(item.stake)} SOL</p>
-                    <p className="font-mono text-sm text-status-true">{(item.topPayout / 10000).toFixed(2)}x</p>
-                    <Link href={`/positions/${item.productAddress}`} className="text-sm font-semibold text-muted-foreground hover:text-foreground">
-                      View position
-                    </Link>
-                  </div>
+                  <Link
+                    key={item.address}
+                    href={`/positions/${item.productAddress}`}
+                    className="grid grid-cols-[1.5fr_1.25fr_0.7fr_0.8fr_0.9fr_0.8fr] gap-3 border-b border-white/6 px-4 py-3 text-[12px] text-white transition-colors last:border-b-0 hover:bg-white/2"
+                  >
+                    <span className="font-semibold">{item.title}</span>
+                    <span className="text-muted-foreground">{item.matchLabel}</span>
+                    <span className="text-status-true">{item.outcome}</span>
+                    <span className="font-mono">{formatSol(item.stake)} SOL</span>
+                    <span className="font-mono">{formatSol(item.payout)} SOL</span>
+                    <span className={item.status === "open" ? "text-status-true" : "text-muted-foreground"}>
+                      {item.status === "open" ? "Open" : item.claimed ? "Claimed" : "Settled"}
+                    </span>
+                  </Link>
                 ))}
               </div>
-            </section>
-          ) : (
-            <section className="market-shell rounded-[30px] border border-border/80 p-8 text-center">
-              <h2 className="text-2xl font-semibold text-foreground">Nothing in this bucket yet</h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                Try another portfolio tab or browse the marketplace to open your first position.
-              </p>
-              <Link href="/markets" className="btn-gradient mt-6 inline-flex min-h-11 items-center rounded-full px-5 py-2.5 text-sm font-semibold">
-                Browse markets
-              </Link>
-            </section>
-          )}
-        </>
+            ) : (
+              <div className="rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,oklch(0.18_0.008_260),oklch(0.15_0.008_260))] p-6 text-center">
+                <p className="text-sm font-semibold text-white">Nothing in this bucket yet</p>
+                <p className="mt-2 text-sm text-muted-foreground">Browse markets to open your first position.</p>
+                <Link href="/markets" className="btn-gradient mt-4 inline-flex rounded-full px-4 py-2 text-sm font-semibold">
+                  Browse markets
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
       )}
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  sub,
+  positive,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  positive?: boolean;
+}) {
+  return (
+    <div className="rounded-[12px] border border-white/8 bg-[linear-gradient(180deg,oklch(0.18_0.008_260),oklch(0.15_0.008_260))] px-3 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className={`mt-2 text-[18px] font-bold ${positive ? "text-status-true" : "text-white"}`}>{value}</div>
+      {sub ? <div className="mt-1 text-[10px] text-muted-foreground">{sub}</div> : null}
     </div>
   );
 }
