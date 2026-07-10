@@ -83,114 +83,85 @@ function MarketsInner() {
   const isLoading = tieredLoading || geoLoading;
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 px-6 py-8">
-      <section className="market-shell rounded-[34px] border border-border/80 p-7">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Explore markets</p>
-        <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground">Browse football markets that feel buyable</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-              Scan the match, read the scenario, check the payout ladder, and move into a clear buy flow without digging through protocol details.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Markets</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{cards.length}</p>
-            </div>
-            <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Live now</p>
-              <p className="mt-2 text-2xl font-semibold text-status-true">
-                {Object.values(liveFixtures).filter((fixture) => fixture.live).length}
-              </p>
-            </div>
-            <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Structured edge</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">Tiered</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="market-shell rounded-[30px] border border-border/80 p-5">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap gap-2">
+    <div className="mx-auto max-w-[1480px] px-4 py-6">
+      <section className="market-shell overflow-hidden rounded-[20px] border border-border/80">
+        <div className="border-b border-border/60 px-4 py-2 text-[11px] font-semibold">
+          <div className="flex gap-5">
             {(["trending", "live", "open", "settled"] as StatusFilter[]).map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setStatusFilter(item)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                  statusFilter === item ? "bg-card text-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={statusFilter === item ? "text-foreground" : "text-muted-foreground"}
               >
                 {item === "trending" ? "Trending" : item.charAt(0).toUpperCase() + item.slice(1)}
               </button>
             ))}
           </div>
+        </div>
 
-          <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-            <label className="flex min-h-12 items-center gap-3 rounded-full border border-border/80 bg-background/35 px-4">
-              <Search className="size-4 text-muted-foreground" />
+        <div className="border-b border-border/60 px-4 py-3">
+          <div className="flex flex-wrap gap-2">
+            <label className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-border/80 bg-card/55 px-3 py-2">
+              <Search className="size-3.5 text-muted-foreground" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                placeholder="Search by match, league, or scenario"
+                className="w-full bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+                placeholder="Search markets..."
               />
             </label>
 
-            <div className="flex flex-wrap gap-2">
-              {([
-                ["all", "All markets"],
-                ["football", "Football"],
-                ["structured", "Structured"],
-                ["exact", "Exact outcome"],
-              ] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setCategoryFilter(value)}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-                    categoryFilter === value
-                      ? "border-status-true bg-status-true/10 text-status-true"
-                      : "border-border/80 text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="market-shell h-[300px] animate-pulse rounded-[30px] border border-border/80 bg-card/60" />
+            {([
+              ["football", "Football"],
+              ["all", "All Leagues"],
+              ["structured", "Market Type"],
+              ["open", "Status: Open"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={`${value}-${label}`}
+                type="button"
+                onClick={() => {
+                  if (value === "football" || value === "structured") setCategoryFilter(value);
+                  if (value === "all") setCategoryFilter("all");
+                  if (value === "open") setStatusFilter("open");
+                }}
+                className="rounded-xl border border-border/80 bg-card/45 px-3 py-2 text-[11px] font-semibold text-foreground"
+              >
+                {label}
+              </button>
             ))}
           </div>
-        ) : filtered.length ? (
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map(({ entry }) =>
+        </div>
+
+        <div className="grid gap-3 p-4 xl:grid-cols-3">
+          {isLoading ? (
+            Array.from({ length: 9 }).map((_, index) => (
+              <div key={index} className="h-[218px] animate-pulse rounded-[18px] border border-border/70 bg-card/60" />
+            ))
+          ) : filtered.length ? (
+            filtered.map(({ entry }) =>
               entry.kind === "tiered" ? (
-                <TieredProductCard key={entry.address.toBase58()} entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
+                <TieredProductCard
+                  key={entry.address.toBase58()}
+                  entry={entry}
+                  live={liveFixtures[Number(entry.data.fixtureId)]?.live}
+                />
               ) : (
-                <GeoProductCard key={entry.address.toBase58()} entry={entry} live={liveFixtures[Number(entry.data.fixtureId)]?.live} />
+                <GeoProductCard
+                  key={entry.address.toBase58()}
+                  entry={entry}
+                  live={liveFixtures[Number(entry.data.fixtureId)]?.live}
+                />
               )
-            )}
-          </section>
-        ) : (
-          <section className="market-shell rounded-[32px] border border-border/80 p-10 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">No matches found</p>
-            <h2 className="mt-3 text-2xl font-semibold text-foreground">Try another angle</h2>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              Clear the search, switch to trending, or jump back to all markets to find a match setup with the right payout profile.
-            </p>
-          </section>
-        )}
+            )
+          ) : (
+            <div className="col-span-full rounded-[18px] border border-border/70 bg-background/35 p-10 text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-status-true">No markets</p>
+              <p className="mt-3 text-[14px] font-semibold text-foreground">Try another search or switch the filters.</p>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );
@@ -198,7 +169,7 @@ function MarketsInner() {
 
 export default function MarketsPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading markets…</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-[1480px] px-4 py-6 text-sm text-muted-foreground">Loading markets…</div>}>
       <MarketsInner />
     </Suspense>
   );
