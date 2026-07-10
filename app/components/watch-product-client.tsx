@@ -12,14 +12,6 @@ import { useProduct } from "@/lib/hooks/useProduct";
 import { useFinalizeProduct } from "@/lib/hooks/useSettlement";
 import { getTieredMarketPresentation } from "@/lib/market-presentation";
 
-function TeamBadge({ label }: { label: string }) {
-  return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-card/65 text-[9px] font-bold text-foreground">
-      {label.slice(0, 2)}
-    </div>
-  );
-}
-
 export function WatchProductClient({ productAddress }: { productAddress: string }) {
   const product = new PublicKey(productAddress);
   const { data, isLoading, isError } = useProduct(product);
@@ -68,30 +60,15 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
         </Link>
 
         <div className="mt-4 flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>{presentation.league}</span>
-          <span>{presentation.kickoffLabel}</span>
-        </div>
-
-        <div className="mt-3 flex items-center gap-3">
-          <TeamBadge label={presentation.homeTeam} />
-          <div className="text-[22px] font-semibold tracking-tight text-foreground">
-            {presentation.homeTeam}
-            <span className="px-2 text-[14px] font-medium text-muted-foreground">vs</span>
-            {presentation.awayTeam}
-          </div>
-          <div className="ml-auto">
-            <TeamBadge label={presentation.awayTeam} />
-          </div>
+          <span>{presentation.sport}</span>
+          <span>{presentation.marketLabel}</span>
         </div>
 
         <h1 className="mt-4 text-[34px] font-semibold tracking-tight text-foreground">{presentation.marketTitle}</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">{presentation.scenario}</p>
 
         <div className="mt-4 flex gap-5 border-b border-border/60 pb-3 text-[11px] font-semibold text-muted-foreground">
           <span className="border-b-2 border-status-true pb-2 text-foreground">Market</span>
-          <span>Rules</span>
-          <span>Stats</span>
-          <span>Chat</span>
-          <span>Activity</span>
         </div>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[1.06fr_0.94fr]">
@@ -156,7 +133,7 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
               numLegs={data.numLegs}
               legResults={data.legResults}
               marketTitle={presentation.marketTitle}
-              matchLabel={`${presentation.homeTeam} vs ${presentation.awayTeam}`}
+              matchLabel={presentation.shortScenario}
             />
 
             <div className="mt-4 rounded-[18px] border border-border/80 bg-background/30 p-4 text-[10px] text-muted-foreground">

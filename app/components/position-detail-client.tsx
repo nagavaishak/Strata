@@ -38,12 +38,12 @@ export function PositionDetailClient({ productAddress }: { productAddress: strin
     return (
       <div className="mx-auto max-w-[1480px] space-y-6 px-6 py-8">
         <section className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,oklch(0.07_0.004_260),oklch(0.07_0.004_260))] p-4 shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
-          <div className="text-[11px] text-muted-foreground">← Back to portfolio</div>
+          <Link href="/positions" className="text-[11px] text-muted-foreground hover:text-foreground">← Back to portfolio</Link>
           <div className="mt-3 flex items-start justify-between">
             <div>
               <h1 className="text-[28px] font-extrabold tracking-tight text-white">{presentation.marketTitle}</h1>
               <p className="mt-1 text-[12px] text-muted-foreground">
-                {presentation.homeTeam} vs {presentation.awayTeam} · {presentation.league}
+                {presentation.sport} · {presentation.marketLabel}
               </p>
             </div>
             <span className="rounded-full border border-status-true/35 bg-status-true/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-status-true">
@@ -113,12 +113,12 @@ export function PositionDetailClient({ productAddress }: { productAddress: strin
   return (
     <div className="mx-auto max-w-[1480px] space-y-6 px-6 py-8">
       <section className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,oklch(0.07_0.004_260),oklch(0.07_0.004_260))] p-4 shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
-        <div className="text-[11px] text-muted-foreground">← Back to portfolio</div>
+        <Link href="/positions" className="text-[11px] text-muted-foreground hover:text-foreground">← Back to portfolio</Link>
         <div className="mt-3 flex items-start justify-between">
           <div>
             <h1 className="text-[28px] font-extrabold tracking-tight text-white">{presentation.marketTitle}</h1>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              {presentation.homeTeam} vs {presentation.awayTeam} · {presentation.league}
+              {presentation.sport} · {presentation.marketLabel}
             </p>
           </div>
           <span className="rounded-full border border-status-true/35 bg-status-true/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-status-true">

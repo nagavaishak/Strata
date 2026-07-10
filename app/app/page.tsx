@@ -73,7 +73,6 @@ export default function HomePage() {
       ? getGeoMarketPresentation(spotlightGeo.data)
       : {
           ...fallbackFixture,
-          marketTitle: fallbackFixture.hero,
           scenario: fallbackFixture.context,
         };
 
@@ -87,26 +86,13 @@ export default function HomePage() {
     ? bpsToMultiplier(Math.max(...spotlightTiered.data.tiers.map((tier) => tier.payoutBps)))
     : spotlightGeo
       ? bpsToMultiplier(spotlightGeo.data.payoutBpsIfTrue)
-      : "2.20x";
+      : "—";
 
   const spotlightPool = spotlightTiered?.data.totalStake ?? spotlightGeo?.data.totalStake ?? 0n;
 
   return (
     <div className="mx-auto flex max-w-[1480px] flex-col gap-8 px-4 py-6">
       <section className="market-shell overflow-hidden rounded-[20px] border border-border/80">
-        <div className="border-b border-border/60 px-4 py-2 text-[11px] font-semibold text-muted-foreground">
-          <div className="flex gap-4 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-            <span className="text-foreground">Trending</span>
-            <span>Football</span>
-            <span>Soccer</span>
-            <span>NFL</span>
-            <span>NBA</span>
-            <span>Tennis</span>
-            <span>eSports</span>
-            <span>More</span>
-          </div>
-        </div>
-
         <div className="relative overflow-hidden bg-[linear-gradient(180deg,rgba(10,35,26,0.96),rgba(6,11,16,1)_62%)] px-4 py-5">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(87,255,167,0.18),transparent_28%),radial-gradient(circle_at_80%_16%,rgba(97,210,255,0.14),transparent_24%)]" />
           <div className="relative grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
@@ -157,24 +143,11 @@ export default function HomePage() {
 
             <div className="market-shell relative rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(7,15,20,0.8),rgba(5,11,16,0.94))] p-4">
               <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Featured market</p>
-              <p className="mt-1 text-[10px] text-muted-foreground">{spotlightPresentation.league}</p>
-              <div className="mt-4 flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/65 text-[10px] font-bold text-foreground">
-                  {spotlightPresentation.homeTeam.slice(0, 2)}
-                </div>
-                <div className="text-[16px] font-semibold leading-tight text-foreground">
-                  {spotlightPresentation.homeTeam}
-                  <div className="text-[10px] font-medium text-muted-foreground">vs</div>
-                  {spotlightPresentation.awayTeam}
-                </div>
-                <div className="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/65 text-[10px] font-bold text-foreground">
-                  {spotlightPresentation.awayTeam.slice(0, 2)}
-                </div>
-              </div>
-              <div className="mt-4 text-[12px] text-muted-foreground">
+              <p className="mt-1 text-[10px] text-muted-foreground">{spotlightPresentation.sport}</p>
+              <div className="mt-4 text-[16px] font-semibold leading-tight text-foreground">
                 {spotlightPresentation.marketTitle}
-                <div className="mt-1 text-[10px]">{spotlightPresentation.kickoffLabel}</div>
               </div>
+              <div className="mt-2 text-[12px] leading-6 text-muted-foreground">{spotlightPresentation.scenario}</div>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <div className="rounded-[14px] border border-status-true/25 bg-status-true/10 p-3 text-center">
                   <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-status-true">Yes</p>
@@ -210,7 +183,7 @@ export default function HomePage() {
                     <MiniCard
                       key={entry.address.toBase58()}
                       href={`/watch/${entry.address.toBase58()}`}
-                      subtitle={presentation.league}
+                      subtitle={presentation.sport}
                       title={presentation.marketTitle}
                       yesLabel={`YES ${payout}`}
                       noLabel={`POOL ${formatSol(entry.data.totalStake)}`}
@@ -224,7 +197,7 @@ export default function HomePage() {
                     <MiniCard
                       key={entry.address.toBase58()}
                       href={`/watch/geo/${entry.address.toBase58()}`}
-                      subtitle={presentation.league}
+                      subtitle={presentation.sport}
                       title={presentation.marketTitle}
                       yesLabel={`YES ${bpsToMultiplier(entry.data.payoutBpsIfTrue)}`}
                       noLabel={`POOL ${formatSol(entry.data.totalStake)}`}

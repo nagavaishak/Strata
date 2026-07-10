@@ -24,17 +24,27 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
   const presentation = getTieredMarketPresentation(data);
   const trueCount = data.legResults.filter((result) => result === "true").length;
   const recomputedPayout = position ? (position.stake * BigInt(data.finalPayoutBps)) / 10000n : 0n;
-  const finalScore = trueCount > 0 ? `${presentation.homeTeam} 3-1 ${presentation.awayTeam}` : `${presentation.homeTeam} 1-0 ${presentation.awayTeam}`;
+  const settledSignature = signatures?.find((sig) => sig.blockTime != null);
+  const settledOn = settledSignature?.blockTime
+    ? new Date(settledSignature.blockTime * 1000).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      })
+    : "Pending confirmation";
 
   return (
     <div className="mx-auto max-w-[1480px] space-y-6 px-6 py-8">
       <section className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,oklch(0.07_0.004_260),oklch(0.07_0.004_260))] p-4 shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
-        <div className="text-[11px] text-muted-foreground">← Back to portfolio</div>
+        <Link href="/positions" className="text-[11px] text-muted-foreground hover:text-white">← Back to portfolio</Link>
         <div className="mt-3 flex items-start justify-between">
           <div>
             <h1 className="text-[28px] font-extrabold tracking-tight text-white">{presentation.marketTitle}</h1>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              {presentation.homeTeam} vs {presentation.awayTeam} · {presentation.league}
+              {presentation.sport} · {presentation.marketLabel}
             </p>
           </div>
           <span className="rounded-full bg-white/8 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">Settled</span>
@@ -42,17 +52,15 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <ReceiptPanel title="Settlement Summary">
-            <ReceiptRow label="Final Score" value={finalScore} />
+            <ReceiptRow label="Conditions hit" value={`${trueCount}/${data.numLegs}`} />
             <ReceiptRow label="Outcome" value={trueCount > 0 ? "Yes" : "No"} />
-            <ReceiptRow label="Settled On" value="Jul 8, 2025, 10:02 PM UTC" />
+            <ReceiptRow label="Settled on" value={settledOn} />
             <ReceiptRow label="Result" value={trueCount > 0 ? "Won" : "Lost"} highlight />
           </ReceiptPanel>
 
           <ReceiptPanel title="Payout Calculation">
             <ReceiptRow label="Stake" value={position ? `${formatSol(position.stake)} SOL` : "0.0000 SOL"} />
-            <ReceiptRow label="Payout (Yes)" value={`${data.finalPayoutBps / 100}%`} />
-            <ReceiptRow label="Payout" value={position ? `${formatSol(position.stake)} SOL` : "0.0000 SOL"} />
-            <ReceiptRow label="Fees" value="-0.0005 SOL" />
+            <ReceiptRow label="Payout multiplier" value={`${data.finalPayoutBps / 100}%`} />
             <ReceiptRow label="You received" value={`${formatSol(recomputedPayout)} SOL`} highlight />
           </ReceiptPanel>
         </div>

@@ -33,26 +33,22 @@ function CardShell({ href, children }: { href: string; children: React.ReactNode
 }
 
 function MarketCardHeader({
-  league,
-  homeTeam,
-  awayTeam,
+  sport,
+  marketLabel,
   title,
   status,
 }: {
-  league: string;
-  homeTeam: string;
-  awayTeam: string;
+  sport: string;
+  marketLabel: string;
   title: string;
   status: string;
 }) {
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
-        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{league}</p>
-        <p className="mt-2 text-[13px] font-semibold tracking-tight text-foreground">
-          {homeTeam} vs {awayTeam}
-        </p>
-        <h3 className="mt-1 text-[12px] font-medium tracking-tight text-muted-foreground">{title}</h3>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{sport}</p>
+        <p className="mt-2 text-[13px] font-semibold tracking-tight text-foreground">{title}</p>
+        <h3 className="mt-1 text-[12px] font-medium tracking-tight text-muted-foreground">{marketLabel}</h3>
       </div>
       <span className="rounded-full border border-border/70 bg-background/45 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-status-true">
         {status}
@@ -93,9 +89,8 @@ export function TieredProductCard({ entry, live }: { entry: ProductListEntry; li
   return (
     <CardShell href={href}>
       <MarketCardHeader
-        league={presentation.league}
-        homeTeam={presentation.homeTeam}
-        awayTeam={presentation.awayTeam}
+        sport={presentation.sport}
+        marketLabel={presentation.marketLabel}
         title={presentation.marketTitle}
         status={MARKET_STATUS_LABEL[status]}
       />
@@ -130,9 +125,8 @@ export function GeoProductCard({ entry, live }: { entry: GeoProductListEntry; li
   return (
     <CardShell href={href}>
       <MarketCardHeader
-        league={presentation.league}
-        homeTeam={presentation.homeTeam}
-        awayTeam={presentation.awayTeam}
+        sport={presentation.sport}
+        marketLabel={presentation.marketLabel}
         title={presentation.marketTitle}
         status={MARKET_STATUS_LABEL[status]}
       />

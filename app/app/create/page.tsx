@@ -71,8 +71,8 @@ export default function CreatePage() {
                 <Field label="Market Type">
                   <Input value="Total Goals" readOnly className="border-white/10 bg-black/10 text-white" />
                 </Field>
-                <Field label="Select Match">
-                  <Input value={`${fixture.homeTeam} vs ${fixture.awayTeam}`} readOnly className="border-white/10 bg-black/10 text-white" />
+                <Field label="Fixture">
+                  <Input value={fixture.marketTitle} readOnly className="border-white/10 bg-black/10 text-white" />
                 </Field>
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Fixture ID">
@@ -149,10 +149,8 @@ export default function CreatePage() {
           <div>
             <StudioPanel title="Live Preview">
               <div className="mt-4">
-                <div className="text-[22px] font-extrabold tracking-tight text-white">{fixture.hero}</div>
-                <div className="mt-1 text-[12px] text-muted-foreground">
-                  {fixture.homeTeam} vs {fixture.awayTeam}
-                </div>
+                <div className="text-[22px] font-extrabold tracking-tight text-white">{fixture.marketTitle}</div>
+                <div className="mt-1 text-[12px] text-muted-foreground">{fixture.context}</div>
               </div>
 
               <div className="mt-4 grid gap-3 md:grid-cols-2">
