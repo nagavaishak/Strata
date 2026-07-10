@@ -65,7 +65,7 @@ export function WatchGeoProductClient({ productAddress }: { productAddress: stri
               maxCapacity={data.maxCapacity}
               payoutBpsIfTrue={data.payoutBpsIfTrue}
               marketTitle={presentation.marketTitle}
-              matchLabel={`${presentation.homeTeam} vs ${presentation.awayTeam}`}
+              matchLabel={presentation.shortScenario}
             />
           ) : (
             <div className="market-shell rounded-[30px] border border-border/80 p-6">

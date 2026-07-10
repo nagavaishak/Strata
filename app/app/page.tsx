@@ -23,7 +23,7 @@ const VALUE_PROPS = [
   {
     icon: TimerReset,
     title: "Live match context",
-    body: "Every featured market is presented like a real match opportunity, with teams, timing, and scenario framing first.",
+    body: "Every featured market is presented with the real fixture, live status, and scenario framing first — no invented match details.",
   },
 ];
 
@@ -101,7 +101,6 @@ export default function HomePage() {
           fixtureId: "18175981",
           marketType: "tiered",
           marketLabel: "Structured market",
-          marketTitle: fallbackFixture.hero,
           scenario: fallbackFixture.context,
           shortScenario: "Curated structured market",
           category: "Featured football",
@@ -162,61 +161,21 @@ export default function HomePage() {
         </div>
 
         <FootballVisualCard
-          title={`${spotlightPresentation.homeTeam} vs ${spotlightPresentation.awayTeam}`}
-          subtitle={`${spotlightPresentation.marketTitle} is live as a premium structured football setup with clear scenario framing and tiered payouts.`}
+          title={spotlightPresentation.marketTitle}
+          subtitle={`${spotlightPresentation.marketLabel} live now with clear scenario framing and tiered payouts.`}
           metric={spotlightTiered ? "Tiered payout live" : "Exact outcome live"}
           caption={spotlightPresentation.scenario}
         />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
-        <div className="market-shell rounded-[32px] border border-border/80 p-7">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Featured football market</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{spotlightPresentation.marketTitle}</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {spotlightPresentation.league} • {spotlightPresentation.homeTeam} vs {spotlightPresentation.awayTeam}
-              </p>
-            </div>
-            {spotlightTiered ? (
-              <Link href={`/watch/${spotlightTiered.address.toBase58()}`} className="btn-gradient inline-flex min-h-11 items-center rounded-full px-5 py-2.5 text-sm font-semibold">
-                Open market
-              </Link>
-            ) : spotlightGeo ? (
-              <Link href={`/watch/geo/${spotlightGeo.address.toBase58()}`} className="btn-gradient inline-flex min-h-11 items-center rounded-full px-5 py-2.5 text-sm font-semibold">
-                Open market
-              </Link>
-            ) : null}
+      <section className="grid gap-4 sm:grid-cols-3">
+        {VALUE_PROPS.map((item) => (
+          <div key={item.title} className="market-shell rounded-[28px] border border-border/80 p-5">
+            <item.icon className="size-5 text-status-true" />
+            <h3 className="mt-4 text-lg font-semibold text-foreground">{item.title}</h3>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.body}</p>
           </div>
-
-          <div className="mt-7 grid gap-4 md:grid-cols-3">
-            <div className="rounded-[24px] border border-border/70 bg-background/40 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Match story</p>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{spotlightPresentation.context}</p>
-            </div>
-            <div className="rounded-[24px] border border-border/70 bg-background/40 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scenario</p>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{spotlightPresentation.scenario}</p>
-            </div>
-            <div className="rounded-[24px] border border-border/70 bg-background/40 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Built for</p>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                Beginners who want the market story in plain English before they ever touch settlement details.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {VALUE_PROPS.map((item) => (
-            <div key={item.title} className="market-shell rounded-[28px] border border-border/80 p-5">
-              <item.icon className="size-5 text-status-true" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">{item.title}</h3>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.body}</p>
-            </div>
-          ))}
-        </div>
+        ))}
       </section>
 
       <section>

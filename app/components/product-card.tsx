@@ -50,9 +50,9 @@ export function TieredProductCard({ entry, live }: { entry: ProductListEntry; li
     <CardShell href={href}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">{presentation.league}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">{presentation.sport}</p>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{presentation.marketTitle}</h3>
-          <p className="mt-2 text-sm text-muted-foreground">{presentation.homeTeam} vs {presentation.awayTeam}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{presentation.marketLabel}</p>
         </div>
         <span className="rounded-full border border-border/70 bg-background/45 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
           {MARKET_STATUS_LABEL[status]}
@@ -103,9 +103,9 @@ export function GeoProductCard({ entry, live }: { entry: GeoProductListEntry; li
     <CardShell href={href}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">{presentation.league}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">{presentation.sport}</p>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{presentation.marketTitle}</h3>
-          <p className="mt-2 text-sm text-muted-foreground">{presentation.homeTeam} vs {presentation.awayTeam}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{presentation.marketLabel}</p>
         </div>
         <span className="rounded-full border border-border/70 bg-background/45 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
           {MARKET_STATUS_LABEL[status]}

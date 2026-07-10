@@ -20,6 +20,7 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
   const { data, isLoading, isError } = useProduct(product);
   const finalize = useFinalizeProduct();
   const [streamStatus, setStreamStatus] = useState<{ live: boolean; lastSeq?: number } | null>(null);
+  const secondsToClose = useCountdown(data ? Number(data.closesAt) : 0);
 
   useEffect(() => {
     if (!data) return;
@@ -49,7 +50,6 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
   }
 
   const presentation = getTieredMarketPresentation(data);
-  const secondsToClose = useCountdown(Number(data.closesAt));
   const now = Math.floor(Date.now() / 1000);
   const canSettle = data.status === "open" && now >= Number(data.closesAt);
   const allSettled = data.legResults.every((result) => result !== "unsettled");
@@ -165,7 +165,7 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
             numLegs={data.numLegs}
             legResults={data.legResults}
             marketTitle={presentation.marketTitle}
-            matchLabel={`${presentation.homeTeam} vs ${presentation.awayTeam}`}
+            matchLabel={presentation.shortScenario}
           />
 
           {data.status === "settled" && (

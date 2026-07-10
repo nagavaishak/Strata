@@ -160,14 +160,13 @@ export default function CreatePage() {
         <section className="space-y-4 xl:sticky xl:top-24 xl:self-start">
           <div className="market-shell rounded-[30px] border border-border/80 p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-true">Preview rail</p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{fixture.hero}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">{fixture.homeTeam} vs {fixture.awayTeam}</p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{fixture.marketTitle}</h2>
             <p className="mt-4 text-sm leading-7 text-muted-foreground">{fixture.context}</p>
 
             <div className="mt-5 grid gap-3">
               <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Kickoff</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">{fixture.kickoffLabel}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Closes in</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{closesInMinutes}m</p>
               </div>
               <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Conditions</p>

@@ -56,13 +56,7 @@ function MarketsInner() {
             ? entry.kind === "tiered"
             : entry.kind === "geo";
 
-    const haystack = [
-      presentation.marketTitle,
-      presentation.homeTeam,
-      presentation.awayTeam,
-      presentation.league,
-      presentation.scenario,
-    ]
+    const haystack = [presentation.marketTitle, presentation.sport, presentation.scenario]
       .join(" ")
       .toLowerCase();
     const matchesQuery = query.trim() ? haystack.includes(query.toLowerCase()) : true;

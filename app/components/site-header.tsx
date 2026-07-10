@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
 import { HowItWorksDialog } from "@/components/how-it-works-dialog";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -68,14 +67,6 @@ export function SiteHeader() {
           />
         </nav>
 
-        <div className="hidden flex-1 items-center gap-3 rounded-full border border-border/80 bg-card/60 px-4 py-3 xl:flex">
-          <Search className="size-4 text-muted-foreground" />
-          <input
-            className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-            placeholder="Search a match, market, or league"
-          />
-        </div>
-
         <div className="ml-auto flex items-center gap-2">
           <Link
             href="/create"
@@ -85,21 +76,6 @@ export function SiteHeader() {
           </Link>
           <StatusBadge />
           <WalletMultiButton />
-        </div>
-      </div>
-
-      <div className="border-t border-border/60">
-        <div className="mx-auto flex max-w-[1400px] items-center gap-2 overflow-x-auto px-4 py-2 text-sm [&::-webkit-scrollbar]:hidden">
-          {["Trending", "Football", "Live now", "Structured", "Exact outcome", "Closing soon"].map((label, index) => (
-            <span
-              key={label}
-              className={`shrink-0 rounded-full px-3 py-1.5 ${
-                index === 0 ? "bg-card text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              {label}
-            </span>
-          ))}
         </div>
       </div>
     </header>
