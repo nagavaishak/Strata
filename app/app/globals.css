@@ -232,6 +232,13 @@
     inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
     0 22px 60px color-mix(in srgb, black 18%, transparent);
 }
+.header-search-surface {
+  background: color-mix(in srgb, var(--background) 82%, transparent);
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-from) 10%, transparent),
+    0 10px 28px -14px color-mix(in srgb, black 55%, transparent);
+}
 .hero-stadium-glow {
   background:
     radial-gradient(340px circle at 18% 16%, color-mix(in srgb, var(--accent-from) 22%, transparent), transparent 60%),
