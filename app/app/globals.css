@@ -230,7 +230,7 @@
   to { transform: translateX(-50%); }
 }
 .animate-ticker {
-  animation: ticker-scroll 42s linear infinite;
+  animation: ticker-scroll 58s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .animate-ticker {

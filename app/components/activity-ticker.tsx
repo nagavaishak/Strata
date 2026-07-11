@@ -59,7 +59,7 @@ export function ActivityTicker() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className={`flex w-max animate-ticker ${paused ? "[animation-play-state:paused]" : ""}`}>
+      <div className="flex w-max animate-ticker" style={{ animationPlayState: paused ? "paused" : "running" }}>
         {feed.map((item, index) => (
           <TickerEntry key={`${item.id}-${index}`} item={item} />
         ))}
