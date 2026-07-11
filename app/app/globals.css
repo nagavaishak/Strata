@@ -225,6 +225,18 @@
 .cursor-blink {
   animation: blink-cursor 1s step-end infinite;
 }
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: ticker-scroll 42s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker {
+    animation-duration: 220s;
+  }
+}
 .market-shell {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, white) 0%, color-mix(in srgb, var(--card) 92%, black) 100%);
