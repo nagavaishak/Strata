@@ -84,30 +84,32 @@ function SiteHeaderInner() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/50 bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto grid max-w-[1480px] grid-cols-[auto_1fr_auto] items-center gap-6 px-6 py-5">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-status-true/25 bg-status-true/10 text-status-true">
-            <span className="text-base font-bold">S</span>
-          </div>
-          <span className="text-xl font-semibold tracking-tight text-foreground">strata</span>
-        </Link>
+      <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-6 px-6 py-5">
+        <div className="flex items-center gap-9">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-status-true/25 bg-status-true/10 text-status-true">
+              <span className="text-base font-bold">S</span>
+            </div>
+            <span className="text-xl font-semibold tracking-tight text-foreground">strata</span>
+          </Link>
 
-        <nav className="hidden items-center justify-center gap-9 md:flex">
-          {NAV_LINKS.map((link) =>
-            link.label === "Live" ? (
-              <Suspense key="Live" fallback={<NavLink href="/markets?filter=live" label="Live" active={false} />}>
-                <LiveNavLink />
-              </Suspense>
-            ) : (
-              <NavLink
-                key={link.label}
-                href={link.href}
-                label={link.label}
-                active={pathname === link.href || pathname.startsWith(`${link.href}/`)}
-              />
-            )
-          )}
-        </nav>
+          <nav className="hidden items-center gap-9 md:flex">
+            {NAV_LINKS.map((link) =>
+              link.label === "Live" ? (
+                <Suspense key="Live" fallback={<NavLink href="/markets?filter=live" label="Live" active={false} />}>
+                  <LiveNavLink />
+                </Suspense>
+              ) : (
+                <NavLink
+                  key={link.label}
+                  href={link.href}
+                  label={link.label}
+                  active={pathname === link.href || pathname.startsWith(`${link.href}/`)}
+                />
+              )
+            )}
+          </nav>
+        </div>
 
         <div className="flex items-center justify-end gap-3">
           <HeaderSearch />
