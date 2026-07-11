@@ -3,8 +3,9 @@
 import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Menu, Search, X } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Menu, X } from "lucide-react";
+import { HeaderSearch } from "@/components/header-search";
 import { HowItWorksModal } from "@/components/how-it-works-modal";
 
 const WalletMultiButton = dynamic(
@@ -70,7 +71,6 @@ function SiteHeaderFallback() {
 
 function SiteHeaderInner() {
   const pathname = usePathname();
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isHome = pathname === "/";
 
@@ -110,14 +110,7 @@ function SiteHeaderInner() {
         </nav>
 
         <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            aria-label="Search markets"
-            onClick={() => router.push("/markets")}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground"
-          >
-            <Search className="size-4" />
-          </button>
+          <HeaderSearch />
           {isHome ? (
             <button
               type="button"
