@@ -12,6 +12,7 @@ export interface MatchMock {
   badge: "Live" | "Open";
   scenarios: string[];
   volume: string;
+  emphasized?: boolean;
 }
 
 export interface ScenarioRow {
@@ -30,6 +31,7 @@ export interface BuyMock {
   matchTitle: string;
   amount: string;
   quickAmounts: string[];
+  fee: string;
   tiers: { label: string; payout: string }[];
 }
 
@@ -77,6 +79,7 @@ export const FLOW_STEPS: FlowStep[] = [
         badge: "Live",
         scenarios: ["Over 2.5 goals", "Both teams to score"],
         volume: "12.4K SOL",
+        emphasized: true,
       },
       {
         league: "La Liga",
@@ -123,6 +126,7 @@ export const FLOW_STEPS: FlowStep[] = [
       matchTitle: "Man City vs Real Madrid",
       amount: "0.05",
       quickAmounts: ["0.01", "0.05", "0.1", "0.5"],
+      fee: "0.0004 SOL",
       tiers: [
         { label: "1/3 conditions hit", payout: "0.060 SOL" },
         { label: "2/3 conditions hit", payout: "0.090 SOL" },

@@ -23,7 +23,12 @@ function MatchesStage({ mock }: { mock: Extract<FlowStep, { mockType: "matches" 
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       {mock.map((match) => (
-        <div key={match.teams} className="market-shell flex flex-col gap-3 rounded-2xl border border-border/70 p-4">
+        <div
+          key={match.teams}
+          className={`market-shell flex flex-col gap-3 rounded-2xl border p-4 transition-colors ${
+            match.emphasized ? "border-status-true/50 ring-1 ring-status-true/25" : "border-border/70"
+          }`}
+        >
           <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             <span>{match.league}</span>
             <span
@@ -80,7 +85,14 @@ function BuyStage({ mock }: { mock: Extract<FlowStep, { mockType: "buy" }>["mock
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-status-true">{mock.matchTitle}</p>
       <p className="mt-1 text-sm font-semibold text-foreground">{mock.scenarioTitle}</p>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex items-center justify-between rounded-2xl border border-border/70 bg-background/35 px-4 py-3">
+        <span className="text-xs text-muted-foreground">Amount</span>
+        <span className="font-mono text-lg font-semibold text-foreground">
+          {mock.amount} <span className="text-sm font-normal text-muted-foreground">SOL</span>
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
         {mock.quickAmounts.map((amount) => (
           <span
             key={amount}
@@ -99,6 +111,11 @@ function BuyStage({ mock }: { mock: Extract<FlowStep, { mockType: "buy" }>["mock
         {mock.tiers.map((tier) => (
           <StageRow key={tier.label} label={tier.label} value={tier.payout} />
         ))}
+        <StageRow label="Network fee" value={mock.fee} />
+      </div>
+
+      <div className="btn-gradient mt-4 flex w-full items-center justify-center rounded-full py-3 text-sm font-semibold">
+        Confirm purchase
       </div>
     </div>
   );

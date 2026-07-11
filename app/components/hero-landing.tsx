@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { HeroBackdropBoard } from "@/components/hero-backdrop-board";
-import { HowItWorksDialog } from "@/components/how-it-works-dialog";
 import type { GeoProductListEntry, ProductListEntry } from "@/lib/hooks/useAllProducts";
 
 export function HeroLanding({
@@ -51,16 +50,13 @@ export function HeroLanding({
             Browse Markets
             <ArrowRight className="size-4" />
           </Link>
-          <HowItWorksDialog
-            trigger={
-              <button
-                type="button"
-                className="inline-flex min-h-12 items-center rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm hover:bg-white/10"
-              >
-                How it works
-              </button>
-            }
-          />
+          <button
+            type="button"
+            onClick={scrollToFlow}
+            className="inline-flex min-h-12 items-center rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm hover:bg-white/10"
+          >
+            How it works
+          </button>
         </motion.div>
       </motion.div>
 

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Menu, Search, X } from "lucide-react";
-import { HowItWorksDialog } from "@/components/how-it-works-dialog";
+import { HowItWorksModal } from "@/components/how-it-works-modal";
 
 const WalletMultiButton = dynamic(
   async () => (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
@@ -72,10 +72,15 @@ function SiteHeaderInner() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isHome = pathname === "/";
 
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  const scrollToFlow = () => {
+    document.getElementById("strata-flow")?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/50 bg-background/70 backdrop-blur-xl">
@@ -113,16 +118,26 @@ function SiteHeaderInner() {
           >
             <Search className="size-4" />
           </button>
-          <HowItWorksDialog
-            trigger={
-              <button
-                type="button"
-                className="hidden items-center rounded-full border border-status-true/30 px-4 py-2 text-sm font-medium text-status-true transition-colors hover:bg-status-true/10 sm:inline-flex"
-              >
-                How it works
-              </button>
-            }
-          />
+          {isHome ? (
+            <button
+              type="button"
+              onClick={scrollToFlow}
+              className="hidden items-center rounded-full border border-status-true/30 px-4 py-2 text-sm font-medium text-status-true transition-colors hover:bg-status-true/10 sm:inline-flex"
+            >
+              How it works
+            </button>
+          ) : (
+            <HowItWorksModal
+              trigger={
+                <button
+                  type="button"
+                  className="hidden items-center rounded-full border border-status-true/30 px-4 py-2 text-sm font-medium text-status-true transition-colors hover:bg-status-true/10 sm:inline-flex"
+                >
+                  How it works
+                </button>
+              }
+            />
+          )}
           <div className="hidden sm:block">
             <WalletMultiButton />
           </div>
