@@ -1,15 +1,47 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Clock3, Flame, Search, Sparkles, TrendingUp, Trophy } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { GeoProductCard, TieredProductCard } from "@/components/product-card";
+import { GeoProductCard, TieredProductCard, type CardSize } from "@/components/product-card";
+import { FeaturedShowcaseHero } from "@/components/featured-showcase-hero";
+import {
+  SideRailModule,
+  closingMetric,
+  payoutMetric,
+  poolMetric,
+  settledMetric,
+} from "@/components/side-rail-module";
 import { useAllGeoProducts, useAllProducts } from "@/lib/hooks/useAllProducts";
 import { useLiveFixtures } from "@/lib/hooks/useLiveFixtures";
-import { getListEntryPresentation } from "@/lib/market-presentation";
+import {
+  pickClosingSoon,
+  pickHighestPayout,
+  pickLiveNow,
+  pickMostActive,
+  pickRecentlySettled,
+  toMarketCards,
+  type MarketCard,
+} from "@/lib/market-collections";
 
 type StatusFilter = "trending" | "live" | "open" | "settled";
 type CategoryFilter = "all" | "football" | "structured" | "exact";
+
+/** Row rhythm for the real market grid: large, then medium x2, then compact x2,
+ * then medium — repeats over however many real cards exist, per group of 5. */
+const GROUP_PATTERN: CardSize[] = ["large", "medium", "medium", "compact", "compact"];
+
+function sizeForIndex(index: number): CardSize {
+  return GROUP_PATTERN[index % GROUP_PATTERN.length];
+}
+
+function RenderCard({ card, size, live }: { card: MarketCard; size: CardSize; live?: boolean }) {
+  return card.entry.kind === "tiered" ? (
+    <TieredProductCard entry={card.entry} live={live} size={size} />
+  ) : (
+    <GeoProductCard entry={card.entry} live={live} size={size} />
+  );
+}
 
 function MarketsInner() {
   const searchParams = useSearchParams();
@@ -41,15 +73,24 @@ function MarketsInner() {
   }, [tiered, geo]);
 
   const liveFixtures = useLiveFixtures(fixtureIds);
+  const liveByFixture = useMemo(
+    () => Object.fromEntries(Object.entries(liveFixtures).map(([id, s]) => [Number(id), s.live])),
+    [liveFixtures]
+  );
+
   const cards = useMemo(() => {
-    const merged = [...(tiered ?? []), ...(geo ?? [])];
-    return merged
-      .map((entry) => ({ entry, presentation: getListEntryPresentation(entry) }))
-      .sort((a, b) => Number(b.entry.data.totalStake - a.entry.data.totalStake));
+    const merged = toMarketCards(tiered ?? [], geo ?? []);
+    return merged.sort((a, b) => Number(b.entry.data.totalStake - a.entry.data.totalStake));
   }, [geo, tiered]);
 
+  const liveNow = useMemo(() => pickLiveNow(cards, liveByFixture), [cards, liveByFixture]);
+  const closingSoon = useMemo(() => pickClosingSoon(cards), [cards]);
+  const highestPayout = useMemo(() => pickHighestPayout(cards), [cards]);
+  const mostActive = useMemo(() => pickMostActive(cards), [cards]);
+  const recentlySettled = useMemo(() => pickRecentlySettled(cards), [cards]);
+
   const filtered = cards.filter(({ entry, presentation }) => {
-    const live = !!liveFixtures[Number(entry.data.fixtureId)]?.live;
+    const live = !!liveByFixture[Number(entry.data.fixtureId)];
     const matchesStatus =
       statusFilter === "trending"
         ? true
@@ -77,27 +118,47 @@ function MarketsInner() {
   const isLoading = tieredLoading || geoLoading;
 
   return (
-    <div className="mx-auto max-w-[1480px] px-4 py-6">
-      <section className="market-shell overflow-hidden rounded-[20px] border border-border/80">
-        <div className="border-b border-border/60 px-4 py-2 text-[11px] font-semibold">
-          <div className="flex gap-5">
+    <div className="mx-auto flex max-w-[1480px] flex-col gap-10 px-4 py-6">
+      {!isLoading && (
+        <section className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <FeaturedShowcaseHero />
+          </div>
+          <div className="flex flex-col gap-4">
+            <SideRailModule title="Live now" icon={Flame} cards={liveNow} metric={payoutMetric} emptyLabel="No live matches right now." />
+            <SideRailModule title="Closing soon" icon={Clock3} cards={closingSoon} metric={closingMetric} emptyLabel="Nothing closing soon." />
+          </div>
+        </section>
+      )}
+
+      {!isLoading && (cards.length > 0) && (
+        <section className="grid gap-4 sm:grid-cols-3">
+          <SideRailModule title="Highest payout" icon={Trophy} cards={highestPayout} metric={payoutMetric} emptyLabel="No markets yet." />
+          <SideRailModule title="Most active" icon={TrendingUp} cards={mostActive} metric={poolMetric} emptyLabel="No markets yet." />
+          <SideRailModule title="Recently settled" icon={Sparkles} cards={recentlySettled} metric={settledMetric} emptyLabel="Nothing settled yet." />
+        </section>
+      )}
+
+      <div className="border-t border-border/60" />
+
+      <section>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-5 text-[12px] font-semibold">
             {(["trending", "live", "open", "settled"] as StatusFilter[]).map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setStatusFilter(item)}
-                className={statusFilter === item ? "text-foreground" : "text-muted-foreground"}
+                className={statusFilter === item ? "text-foreground" : "text-muted-foreground transition-colors hover:text-foreground"}
               >
-                {item === "trending" ? "Trending" : item.charAt(0).toUpperCase() + item.slice(1)}
+                {item === "trending" ? "All football markets" : item.charAt(0).toUpperCase() + item.slice(1)}
               </button>
             ))}
           </div>
-        </div>
 
-        <div className="border-b border-border/60 px-4 py-3">
-          <div className="flex flex-wrap gap-2">
-            <label className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-border/80 bg-card/55 px-3 py-2">
-              <Search className="size-3.5 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex min-w-[180px] items-center gap-2 rounded-full border border-border/60 bg-transparent px-3 py-1.5">
+              <Search className="size-3 text-muted-foreground" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -105,22 +166,16 @@ function MarketsInner() {
                 placeholder="Search markets..."
               />
             </label>
-
             {([
               ["football", "Football"],
-              ["all", "All Leagues"],
-              ["structured", "Market Type"],
-              ["open", "Status: Open"],
+              ["all", "All leagues"],
+              ["structured", "Market type"],
             ] as const).map(([value, label]) => (
               <button
                 key={`${value}-${label}`}
                 type="button"
-                onClick={() => {
-                  if (value === "football" || value === "structured") setCategoryFilter(value);
-                  if (value === "all") setCategoryFilter("all");
-                  if (value === "open") setStatusFilter("open");
-                }}
-                className="rounded-xl border border-border/80 bg-card/45 px-3 py-2 text-[11px] font-semibold text-foreground"
+                onClick={() => setCategoryFilter(value === "all" ? "all" : value)}
+                className="rounded-full border border-border/50 px-3 py-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 {label}
               </button>
@@ -128,29 +183,34 @@ function MarketsInner() {
           </div>
         </div>
 
-        <div className="grid gap-3 p-4 xl:grid-cols-3">
+        <div id="markets-grid" className="scroll-mt-24">
           {isLoading ? (
-            Array.from({ length: 9 }).map((_, index) => (
-              <div key={index} className="h-[218px] animate-pulse rounded-[18px] border border-border/70 bg-card/60" />
-            ))
+            <div className="grid gap-4 md:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="h-[218px] animate-pulse rounded-[18px] border border-border/70 bg-card/60" />
+              ))}
+            </div>
           ) : filtered.length ? (
-            filtered.map(({ entry }) =>
-              entry.kind === "tiered" ? (
-                <TieredProductCard
-                  key={entry.address.toBase58()}
-                  entry={entry}
-                  live={liveFixtures[Number(entry.data.fixtureId)]?.live}
-                />
-              ) : (
-                <GeoProductCard
-                  key={entry.address.toBase58()}
-                  entry={entry}
-                  live={liveFixtures[Number(entry.data.fixtureId)]?.live}
-                />
-              )
-            )
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: Math.ceil(filtered.length / GROUP_PATTERN.length) }).map((_, groupIndex) => {
+                const group = filtered.slice(groupIndex * GROUP_PATTERN.length, groupIndex * GROUP_PATTERN.length + GROUP_PATTERN.length);
+                return (
+                  <div key={groupIndex} className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                    {group.map((card, i) => {
+                      const size = sizeForIndex(i);
+                      const spanClass = size === "compact" ? "md:col-span-1" : "md:col-span-2";
+                      return (
+                        <div key={card.entry.address.toBase58()} className={spanClass}>
+                          <RenderCard card={card} size={size} live={liveByFixture[Number(card.entry.data.fixtureId)]} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            <div className="col-span-full rounded-[18px] border border-border/70 bg-background/35 p-10 text-center">
+            <div className="rounded-[18px] border border-border/70 bg-background/35 p-10 text-center">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-status-true">No markets</p>
               <p className="mt-3 text-[14px] font-semibold text-foreground">Try another search or switch the filters.</p>
             </div>
