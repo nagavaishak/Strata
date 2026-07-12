@@ -53,6 +53,44 @@ export function pickRecentlySettled(cards: MarketCard[], limit = 4): MarketCard[
     .slice(0, limit);
 }
 
+export interface ScenarioBubble {
+  id: string;
+  label: string;
+  payoutBps: number;
+  href: string;
+}
+
+function hrefForEntry(entry: MarketEntry): string {
+  const address = entry.address.toBase58();
+  const open = entry.data.status === "open";
+  if (entry.kind === "tiered") return open ? `/watch/${address}` : `/verify/${address}`;
+  return open ? `/watch/geo/${address}` : `/verify/geo/${address}`;
+}
+
+/** Distinct scenario blurbs across every real market, ranked by payout — a
+ * horizontal "popular scenarios" strip reads the marketplace by condition
+ * rather than by fixture, without inventing anything: the label is the same
+ * real leg-derived scenario text every card already shows. */
+export function pickPopularScenarios(cards: MarketCard[], limit = 8): ScenarioBubble[] {
+  const seen = new Set<string>();
+  const bubbles: ScenarioBubble[] = [];
+
+  for (const card of [...cards].sort((a, b) => topPayoutBps(b.entry) - topPayoutBps(a.entry))) {
+    const label = card.presentation.scenario;
+    if (seen.has(label)) continue;
+    seen.add(label);
+    bubbles.push({
+      id: card.entry.address.toBase58(),
+      label,
+      payoutBps: topPayoutBps(card.entry),
+      href: hrefForEntry(card.entry),
+    });
+    if (bubbles.length >= limit) break;
+  }
+
+  return bubbles;
+}
+
 export function cardStatus(card: MarketCard, liveByFixture: Record<number, boolean>) {
   return deriveMarketStatus({
     status: card.entry.data.status,

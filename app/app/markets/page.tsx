@@ -1,17 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Clock3, Flame, Search, Sparkles, TrendingUp, Trophy } from "lucide-react";
+import { Clock3, Flame, Search } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { GeoProductCard, TieredProductCard, type CardSize } from "@/components/product-card";
 import { FeaturedShowcaseHero } from "@/components/featured-showcase-hero";
-import {
-  SideRailModule,
-  closingMetric,
-  payoutMetric,
-  poolMetric,
-  settledMetric,
-} from "@/components/side-rail-module";
+import { SideRailModule, closingMetric, payoutMetric } from "@/components/side-rail-module";
+import { HighestPayoutBoard, MostActiveBoard, RecentlySettledBoard } from "@/components/market-collection-boards";
+import { ScenarioBubbleRow } from "@/components/scenario-bubble-row";
+import { MarketsEmptyState } from "@/components/markets-empty-state";
 import { useAllGeoProducts, useAllProducts } from "@/lib/hooks/useAllProducts";
 import { useLiveFixtures } from "@/lib/hooks/useLiveFixtures";
 import {
@@ -19,6 +16,7 @@ import {
   pickHighestPayout,
   pickLiveNow,
   pickMostActive,
+  pickPopularScenarios,
   pickRecentlySettled,
   toMarketCards,
   type MarketCard,
@@ -88,6 +86,7 @@ function MarketsInner() {
   const highestPayout = useMemo(() => pickHighestPayout(cards), [cards]);
   const mostActive = useMemo(() => pickMostActive(cards), [cards]);
   const recentlySettled = useMemo(() => pickRecentlySettled(cards), [cards]);
+  const popularScenarios = useMemo(() => pickPopularScenarios(cards), [cards]);
 
   const filtered = cards.filter(({ entry, presentation }) => {
     const live = !!liveByFixture[Number(entry.data.fixtureId)];
@@ -131,13 +130,15 @@ function MarketsInner() {
         </section>
       )}
 
-      {!isLoading && (cards.length > 0) && (
+      {!isLoading && cards.length > 0 && (
         <section className="grid gap-4 sm:grid-cols-3">
-          <SideRailModule title="Highest payout" icon={Trophy} cards={highestPayout} metric={payoutMetric} emptyLabel="No markets yet." />
-          <SideRailModule title="Most active" icon={TrendingUp} cards={mostActive} metric={poolMetric} emptyLabel="No markets yet." />
-          <SideRailModule title="Recently settled" icon={Sparkles} cards={recentlySettled} metric={settledMetric} emptyLabel="Nothing settled yet." />
+          <HighestPayoutBoard cards={highestPayout} />
+          <MostActiveBoard cards={mostActive} />
+          <RecentlySettledBoard cards={recentlySettled} />
         </section>
       )}
+
+      {!isLoading && popularScenarios.length > 0 && <ScenarioBubbleRow scenarios={popularScenarios} />}
 
       <div className="border-t border-border/60" />
 
@@ -210,10 +211,15 @@ function MarketsInner() {
               })}
             </div>
           ) : (
-            <div className="rounded-[18px] border border-border/70 bg-background/35 p-10 text-center">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-status-true">No markets</p>
-              <p className="mt-3 text-[14px] font-semibold text-foreground">Try another search or switch the filters.</p>
-            </div>
+            <MarketsEmptyState
+              hasQuery={query.trim().length > 0}
+              onClearSearch={() => setQuery("")}
+              onShowTrending={() => {
+                setQuery("");
+                setStatusFilter("trending");
+                setCategoryFilter("all");
+              }}
+            />
           )}
         </div>
       </section>

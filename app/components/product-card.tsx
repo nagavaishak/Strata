@@ -24,15 +24,43 @@ function CapacityBar({ fraction }: { fraction: number }) {
   );
 }
 
-function CardShell({ href, size, children }: { href: string; size: CardSize; children: React.ReactNode }) {
+const STATUS_BORDER: Record<MarketStatus, string> = {
+  open: "border-l-border",
+  "closing-soon": "border-l-status-pending/70",
+  live: "border-l-status-true/70",
+  settling: "border-l-status-pending/70",
+  settled: "border-l-border",
+};
+
+function CardShell({
+  href,
+  size,
+  status,
+  children,
+}: {
+  href: string;
+  size: CardSize;
+  status?: MarketStatus;
+  children: React.ReactNode;
+}) {
   const minHeight = size === "large" ? "min-h-[380px]" : size === "compact" ? "min-h-[132px]" : "min-h-[218px]";
   const padding = size === "large" ? "p-5" : "p-3";
+  const compactAccent = size === "compact" && status ? `border-l-2 ${STATUS_BORDER[status]}` : "";
   return (
     <Link
       href={href}
-      className={`market-shell group flex ${minHeight} flex-col rounded-[18px] border border-border/80 ${padding} transition-all duration-200 hover:-translate-y-0.5 hover:border-status-true/35`}
+      className={`market-shell group relative flex ${minHeight} flex-col overflow-hidden rounded-[18px] border border-border/80 ${padding} ${compactAccent} transition-all duration-200 hover:-translate-y-0.5 hover:border-status-true/35`}
     >
-      {children}
+      {size === "large" && (
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(0deg, transparent 0 34px, currentColor 34px 35px), repeating-linear-gradient(90deg, transparent 0 34px, currentColor 34px 35px)",
+          }}
+        />
+      )}
+      <div className="relative flex h-full flex-col">{children}</div>
     </Link>
   );
 }
@@ -213,7 +241,7 @@ export function TieredProductCard({
 
   if (size === "large") {
     return (
-      <CardShell href={href} size={size}>
+      <CardShell href={href} size={size} status={status}>
         <LargeCardBody
           data={{
             presentation,
@@ -234,7 +262,7 @@ export function TieredProductCard({
 
   if (size === "compact") {
     return (
-      <CardShell href={href} size={size}>
+      <CardShell href={href} size={size} status={status}>
         <CompactCardBody
           data={{
             presentation,
@@ -250,7 +278,7 @@ export function TieredProductCard({
   }
 
   return (
-    <CardShell href={href} size={size}>
+    <CardShell href={href} size={size} status={status}>
       <MediumCardBody
         entry={entry}
         presentation={presentation}
@@ -281,7 +309,7 @@ export function GeoProductCard({
 
   if (size === "large") {
     return (
-      <CardShell href={href} size={size}>
+      <CardShell href={href} size={size} status={status}>
         <LargeCardBody
           data={{
             presentation,
@@ -298,7 +326,7 @@ export function GeoProductCard({
 
   if (size === "compact") {
     return (
-      <CardShell href={href} size={size}>
+      <CardShell href={href} size={size} status={status}>
         <CompactCardBody
           data={{
             presentation,
@@ -314,7 +342,7 @@ export function GeoProductCard({
   }
 
   return (
-    <CardShell href={href} size={size}>
+    <CardShell href={href} size={size} status={status}>
       <MediumCardBody
         entry={entry}
         presentation={presentation}
