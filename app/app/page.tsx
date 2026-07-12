@@ -19,7 +19,7 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto flex max-w-[1480px] flex-col gap-20 px-4 py-6">
-      <HeroLanding tiered={tiered ?? []} geo={geo ?? []} />
+      <HeroLanding />
 
       <TradeFlowSection />
 
