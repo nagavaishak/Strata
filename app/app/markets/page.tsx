@@ -207,14 +207,17 @@ function MarketsInner() {
             </label>
             {([
               ["football", "Football"],
-              ["all", "All leagues"],
-              ["structured", "Market type"],
+              ["structured", "Structured only"],
             ] as const).map(([value, label]) => (
               <button
-                key={`${value}-${label}`}
+                key={value}
                 type="button"
-                onClick={() => setCategoryFilter(value === "all" ? "all" : value)}
-                className="rounded-full border border-border/50 px-3 py-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => setCategoryFilter((current) => (current === value ? "all" : value))}
+                className={`rounded-full border px-3 py-1.5 text-[10px] font-medium transition-colors ${
+                  categoryFilter === value
+                    ? "border-status-true/40 bg-status-true/10 text-status-true"
+                    : "border-border/50 text-muted-foreground hover:text-foreground"
+                }`}
               >
                 {label}
               </button>
