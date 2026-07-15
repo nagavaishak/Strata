@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { HeaderSearch } from "@/components/header-search";
 import { HowItWorksModal } from "@/components/how-it-works-modal";
@@ -15,7 +15,6 @@ const WalletMultiButton = dynamic(
 
 const NAV_LINKS = [
   { label: "Markets", href: "/markets" },
-  { label: "Live", href: "/markets?filter=live" },
   { label: "Portfolio", href: "/positions" },
   { label: "Create", href: "/create" },
 ] as const;
@@ -37,13 +36,6 @@ function NavLink({ href, label, active }: { href: string; label: string; active:
       />
     </Link>
   );
-}
-
-function LiveNavLink() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const active = pathname === "/markets" && searchParams.get("filter") === "live";
-  return <NavLink href="/markets?filter=live" label="Live" active={active} />;
 }
 
 export function SiteHeader() {
@@ -94,20 +86,14 @@ function SiteHeaderInner() {
           </Link>
 
           <nav className="hidden items-center gap-9 md:flex">
-            {NAV_LINKS.map((link) =>
-              link.label === "Live" ? (
-                <Suspense key="Live" fallback={<NavLink href="/markets?filter=live" label="Live" active={false} />}>
-                  <LiveNavLink />
-                </Suspense>
-              ) : (
-                <NavLink
-                  key={link.label}
-                  href={link.href}
-                  label={link.label}
-                  active={pathname === link.href || pathname.startsWith(`${link.href}/`)}
-                />
-              )
-            )}
+            {NAV_LINKS.map((link) => (
+              <NavLink
+                key={link.label}
+                href={link.href}
+                label={link.label}
+                active={pathname === link.href || pathname.startsWith(`${link.href}/`)}
+              />
+            ))}
           </nav>
         </div>
 
