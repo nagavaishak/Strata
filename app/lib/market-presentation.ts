@@ -44,6 +44,30 @@ export function getFixturePresentation(fixtureId: bigint | number | string): Fix
   };
 }
 
+interface LiveIdentityLike {
+  homeTeam: string;
+  awayTeam: string;
+  competition: string;
+}
+
+/** Overlays a live-fetched fixture identity (see useFixtureMetadata) onto an
+ * already-built presentation — only when the static verified list didn't
+ * already resolve this fixture (that list wins when both exist, since it's
+ * manually confirmed rather than freshly fetched every page load). */
+export function withLiveFixtureIdentity<T extends MarketPresentation>(
+  presentation: T,
+  fixtureId: bigint | number | string,
+  live: LiveIdentityLike | null | undefined
+): T {
+  if (!live || getVerifiedFixture(fixtureId)) return presentation;
+  const suffix = presentation.marketType === "geo" ? " · Exact" : "";
+  return {
+    ...presentation,
+    marketTitle: `${live.homeTeam} vs ${live.awayTeam}${suffix}`,
+    context: `${live.competition} · proof-backed settlement.`,
+  };
+}
+
 function formatThreshold(value: number) {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }

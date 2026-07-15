@@ -11,6 +11,7 @@ import { ScenarioBubbleRow } from "@/components/scenario-bubble-row";
 import { MarketsEmptyState } from "@/components/markets-empty-state";
 import { useAllGeoProducts, useAllProducts } from "@/lib/hooks/useAllProducts";
 import { useLiveFixtures } from "@/lib/hooks/useLiveFixtures";
+import { useFixtureMetadata } from "@/lib/hooks/useFixtureMetadata";
 import {
   pickClosingSoon,
   pickHighestPayout,
@@ -22,6 +23,8 @@ import {
   type MarketCard,
 } from "@/lib/market-collections";
 import { isVerifiedPlay } from "@/lib/verified-plays";
+import { getVerifiedFixture } from "@/lib/fixture-identity";
+import { withLiveFixtureIdentity } from "@/lib/market-presentation";
 
 type StatusFilter = "trending" | "live" | "open" | "settled";
 type CategoryFilter = "all" | "football" | "structured" | "exact";
@@ -36,9 +39,9 @@ function sizeForIndex(index: number): CardSize {
 
 function RenderCard({ card, size, live }: { card: MarketCard; size: CardSize; live?: boolean }) {
   return card.entry.kind === "tiered" ? (
-    <TieredProductCard entry={card.entry} live={live} size={size} />
+    <TieredProductCard entry={card.entry} live={live} size={size} presentation={card.presentation} />
   ) : (
-    <GeoProductCard entry={card.entry} live={live} size={size} />
+    <GeoProductCard entry={card.entry} live={live} size={size} presentation={card.presentation} />
   );
 }
 
@@ -90,14 +93,40 @@ function MarketsInner() {
     return curated.sort((a, b) => Number(b.entry.data.totalStake - a.entry.data.totalStake));
   }, [geo, tiered]);
 
-  const liveNow = useMemo(() => pickLiveNow(cards, liveByFixture), [cards, liveByFixture]);
-  const closingSoon = useMemo(() => pickClosingSoon(cards), [cards]);
-  const highestPayout = useMemo(() => pickHighestPayout(cards), [cards]);
-  const mostActive = useMemo(() => pickMostActive(cards), [cards]);
-  const recentlySettled = useMemo(() => pickRecentlySettled(cards), [cards]);
-  const popularScenarios = useMemo(() => pickPopularScenarios(cards), [cards]);
+  // Fixtures with no static verified identity (fixture-identity.ts) get a live
+  // lookup against TxLINE's own fixtures-metadata API — see
+  // lib/txline/session.ts's getFixtureMetadata. The static list still wins
+  // when both exist.
+  const unresolvedFixtureIds = useMemo(() => {
+    const ids = new Set<number>();
+    cards.forEach(({ entry }) => {
+      if (!getVerifiedFixture(entry.data.fixtureId)) ids.add(Number(entry.data.fixtureId));
+    });
+    return [...ids];
+  }, [cards]);
+  const liveIdentity = useFixtureMetadata(unresolvedFixtureIds);
 
-  const filtered = cards.filter(({ entry, presentation }) => {
+  const enrichedCards = useMemo(
+    () =>
+      cards.map((card) => ({
+        ...card,
+        presentation: withLiveFixtureIdentity(
+          card.presentation,
+          card.entry.data.fixtureId,
+          liveIdentity[Number(card.entry.data.fixtureId)]
+        ),
+      })),
+    [cards, liveIdentity]
+  );
+
+  const liveNow = useMemo(() => pickLiveNow(enrichedCards, liveByFixture), [enrichedCards, liveByFixture]);
+  const closingSoon = useMemo(() => pickClosingSoon(enrichedCards), [enrichedCards]);
+  const highestPayout = useMemo(() => pickHighestPayout(enrichedCards), [enrichedCards]);
+  const mostActive = useMemo(() => pickMostActive(enrichedCards), [enrichedCards]);
+  const recentlySettled = useMemo(() => pickRecentlySettled(enrichedCards), [enrichedCards]);
+  const popularScenarios = useMemo(() => pickPopularScenarios(enrichedCards), [enrichedCards]);
+
+  const filtered = enrichedCards.filter(({ entry, presentation }) => {
     const live = !!liveByFixture[Number(entry.data.fixtureId)];
     const matchesStatus =
       statusFilter === "trending"

@@ -227,12 +227,14 @@ export function TieredProductCard({
   entry,
   live,
   size = "medium",
+  presentation: presentationOverride,
 }: {
   entry: ProductListEntry;
   live?: boolean;
   size?: CardSize;
+  presentation?: MarketPresentation;
 }) {
-  const presentation = getTieredMarketPresentation(entry.data);
+  const presentation = presentationOverride ?? getTieredMarketPresentation(entry.data);
   const secondsLeft = useCountdown(Number(entry.data.closesAt));
   const fill = capacityFillFraction(entry.data.totalStake, entry.data.maxCapacity);
   const topPayout = entry.data.tiers.length ? Math.max(...entry.data.tiers.map((tier) => tier.payoutBps)) : 0;
@@ -296,12 +298,14 @@ export function GeoProductCard({
   entry,
   live,
   size = "medium",
+  presentation: presentationOverride,
 }: {
   entry: GeoProductListEntry;
   live?: boolean;
   size?: CardSize;
+  presentation?: MarketPresentation;
 }) {
-  const presentation = getGeoMarketPresentation(entry.data);
+  const presentation = presentationOverride ?? getGeoMarketPresentation(entry.data);
   const secondsLeft = useCountdown(Number(entry.data.closesAt));
   const fill = capacityFillFraction(entry.data.totalStake, entry.data.maxCapacity);
   const status = deriveMarketStatus({ status: entry.data.status, closesAt: entry.data.closesAt, live });

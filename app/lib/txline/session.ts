@@ -224,6 +224,50 @@ export async function fetchLatestForFixtureV2(
   return null;
 }
 
+// ---------- fixture metadata: live team-name/competition lookup ----------
+
+export interface FixtureMetadata {
+  homeTeam: string;
+  awayTeam: string;
+  competition: string;
+  startTime: number;
+}
+
+const SECONDS_PER_DAY = 86400;
+const METADATA_WINDOWS_BACK = 6; // ~6 months of 30-day windows
+
+/** TxLINE's /api/fixtures/snapshot has no direct by-fixtureId query — it returns
+ * every fixture starting at-or-within-30-days-after a given epoch day. Steps
+ * backward through a handful of non-overlapping 30-day windows (covering
+ * roughly the last 6 months) until the fixture turns up, since this app only
+ * ever needs metadata for fixtures it has actually traded against. Used as a
+ * live supplement to fixture-identity.ts's static, manually-verified list —
+ * that list still wins when both exist, since it's already confirmed. */
+export async function getFixtureMetadata(fixtureId: number): Promise<FixtureMetadata | null> {
+  const { http } = await getTxlineSession();
+  const today = Math.floor(Date.now() / 1000 / SECONDS_PER_DAY);
+
+  for (let windowsBack = 0; windowsBack < METADATA_WINDOWS_BACK; windowsBack++) {
+    const startEpochDay = today - windowsBack * 30;
+    try {
+      const res = await http.get("/api/fixtures/snapshot", { params: { startEpochDay } });
+      const list: any[] = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+      const match = list.find((f) => (f.FixtureId ?? f.fixtureId) === fixtureId);
+      if (match) {
+        return {
+          homeTeam: match.Participant1 ?? match.participant1,
+          awayTeam: match.Participant2 ?? match.participant2,
+          competition: match.Competition ?? match.competition,
+          startTime: match.StartTime ?? match.startTime,
+        };
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 // ---------- live stream: one shared upstream connection, polled by many clients ----------
 
 interface FixtureStreamState {
