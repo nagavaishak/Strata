@@ -1,6 +1,5 @@
 "use client";
 
-import { PublicKey } from "@solana/web3.js";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccountSignatures } from "@/lib/hooks/useAccountSignatures";
@@ -10,9 +9,10 @@ import { useProduct } from "@/lib/hooks/useProduct";
 import { useClaim } from "@/lib/hooks/useSettlement";
 import { formatSol } from "@/lib/format";
 import { getTieredMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
+import { parsePublicKey } from "@/lib/solana-address";
 
 export function VerifyProductClient({ productAddress }: { productAddress: string }) {
-  const product = new PublicKey(productAddress);
+  const product = parsePublicKey(productAddress);
   const { publicKey } = useWallet();
   const { data, isLoading, isError } = useProduct(product);
   const { data: position } = usePosition(product, "tiered");
@@ -21,7 +21,7 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
   const liveIdentity = useFixtureMetadata(data ? [Number(data.fixtureId)] : []);
 
   if (isLoading) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading receipt…</div>;
-  if (isError || !data) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Product not found.</div>;
+  if (isError || !data || !product) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Product not found.</div>;
 
   const presentation = withLiveFixtureIdentity(
     getTieredMarketPresentation(data),

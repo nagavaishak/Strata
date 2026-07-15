@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PublicKey } from "@solana/web3.js";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LegStatusList } from "@/components/leg-status-list";
@@ -12,9 +11,10 @@ import { useFixtureMetadata } from "@/lib/hooks/useFixtureMetadata";
 import { useProduct } from "@/lib/hooks/useProduct";
 import { useFinalizeProduct } from "@/lib/hooks/useSettlement";
 import { getTieredMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
+import { parsePublicKey } from "@/lib/solana-address";
 
 export function WatchProductClient({ productAddress }: { productAddress: string }) {
-  const product = new PublicKey(productAddress);
+  const product = parsePublicKey(productAddress);
   const { data, isLoading, isError } = useProduct(product);
   const finalize = useFinalizeProduct();
   const [streamStatus, setStreamStatus] = useState<{ live: boolean; lastSeq?: number } | null>(null);
@@ -44,7 +44,7 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
     return <div className="mx-auto max-w-[1480px] px-4 py-8 text-sm text-muted-foreground">Loading market…</div>;
   }
 
-  if (isError || !data) {
+  if (isError || !data || !product) {
     return <div className="mx-auto max-w-[1480px] px-4 py-8 text-sm text-status-false">Market not found.</div>;
   }
 

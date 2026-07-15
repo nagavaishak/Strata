@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { PublicKey } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { MatchIdentity } from "@/components/market-identity";
 import { Button } from "@/components/ui/button";
@@ -12,9 +11,10 @@ import { useClaimGeo } from "@/lib/hooks/useGeoProductActions";
 import { usePosition } from "@/lib/hooks/usePosition";
 import { bpsToMultiplier, formatSol } from "@/lib/format";
 import { getGeoMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
+import { parsePublicKey } from "@/lib/solana-address";
 
 export function VerifyGeoProductClient({ productAddress }: { productAddress: string }) {
-  const geoProduct = new PublicKey(productAddress);
+  const geoProduct = parsePublicKey(productAddress);
   const { publicKey } = useWallet();
   const { data, isLoading, isError } = useGeoProduct(geoProduct);
   const { data: position } = usePosition(geoProduct, "geo");
@@ -23,7 +23,7 @@ export function VerifyGeoProductClient({ productAddress }: { productAddress: str
   const liveIdentity = useFixtureMetadata(data ? [Number(data.fixtureId)] : []);
 
   if (isLoading) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading receipt…</div>;
-  if (isError || !data) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Product not found.</div>;
+  if (isError || !data || !geoProduct) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Product not found.</div>;
 
   const presentation = withLiveFixtureIdentity(
     getGeoMarketPresentation(data),

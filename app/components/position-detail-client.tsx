@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { PublicKey } from "@solana/web3.js";
 import { useGeoProduct } from "@/lib/hooks/useGeoProduct";
 import { usePosition } from "@/lib/hooks/usePosition";
 import { useProduct } from "@/lib/hooks/useProduct";
@@ -11,9 +10,10 @@ import { bpsToMultiplier, formatSol } from "@/lib/format";
 import { getGeoMarketPresentation, getTieredMarketPresentation } from "@/lib/market-presentation";
 import { useClaim } from "@/lib/hooks/useSettlement";
 import { useClaimGeo } from "@/lib/hooks/useGeoProductActions";
+import { parsePublicKey } from "@/lib/solana-address";
 
 export function PositionDetailClient({ productAddress }: { productAddress: string }) {
-  const product = new PublicKey(productAddress);
+  const product = parsePublicKey(productAddress);
   const tiered = useProduct(product);
   const geo = useGeoProduct(product);
   const tieredPosition = usePosition(product, "tiered");
@@ -25,7 +25,7 @@ export function PositionDetailClient({ productAddress }: { productAddress: strin
     return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading position…</div>;
   }
 
-  if (!tiered.data && !geo.data) {
+  if (!product || (!tiered.data && !geo.data)) {
     return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Position not found.</div>;
   }
 

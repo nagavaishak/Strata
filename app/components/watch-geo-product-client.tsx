@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { PublicKey } from "@solana/web3.js";
 import { ArrowLeft } from "lucide-react";
 import { MatchIdentity } from "@/components/market-identity";
 import { TakePositionPanel } from "@/components/take-position-panel";
@@ -11,15 +10,16 @@ import { useGeoProduct } from "@/lib/hooks/useGeoProduct";
 import { useSettleGeoProduct } from "@/lib/hooks/useGeoProductActions";
 import { bpsToMultiplier, formatSol } from "@/lib/format";
 import { getGeoMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
+import { parsePublicKey } from "@/lib/solana-address";
 
 export function WatchGeoProductClient({ productAddress }: { productAddress: string }) {
-  const geoProduct = new PublicKey(productAddress);
+  const geoProduct = parsePublicKey(productAddress);
   const { data, isLoading, isError } = useGeoProduct(geoProduct);
   const settle = useSettleGeoProduct();
   const liveIdentity = useFixtureMetadata(data ? [Number(data.fixtureId)] : []);
 
   if (isLoading) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading market…</div>;
-  if (isError || !data) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Market not found.</div>;
+  if (isError || !data || !geoProduct) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Market not found.</div>;
 
   const presentation = withLiveFixtureIdentity(
     getGeoMarketPresentation(data),
