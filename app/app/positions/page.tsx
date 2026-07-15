@@ -22,14 +22,18 @@ export default function PositionsPage() {
         const tieredMatch = (tiered ?? []).find((entry) => entry.address.equals(position.product));
         if (tieredMatch) {
           const presentation = getTieredMarketPresentation(tieredMatch.data);
-          const payout = (position.stake * BigInt(Math.max(...tieredMatch.data.tiers.map((tier) => tier.payoutBps)))) / 10000n;
+          const topPayoutBps = Math.max(...tieredMatch.data.tiers.map((tier) => tier.payoutBps));
+          // A settled product's real result is finalPayoutBps -- the top-tier
+          // estimate only applies while the outcome is still undecided.
+          const payoutBps = tieredMatch.data.status === "settled" ? tieredMatch.data.finalPayoutBps : topPayoutBps;
+          const payout = (position.stake * BigInt(payoutBps)) / 10000n;
 
           return {
             address: position.address.toBase58(),
             productAddress: position.product.toBase58(),
             title: presentation.marketTitle,
             matchLabel: presentation.shortScenario,
-            outcome: "Yes",
+            outcome: tieredMatch.data.status === "settled" ? (payoutBps > 0 ? "Yes" : "No") : "Pending",
             stake: position.stake,
             payout,
             status: tieredMatch.data.status,
@@ -40,14 +44,17 @@ export default function PositionsPage() {
         const geoMatch = (geo ?? []).find((entry) => entry.address.equals(position.product));
         if (geoMatch) {
           const presentation = getGeoMarketPresentation(geoMatch.data);
-          const payout = (position.stake * BigInt(geoMatch.data.payoutBpsIfTrue)) / 10000n;
+          // A settled product's real result is finalPayoutBps -- payoutBpsIfTrue
+          // is only the estimate while the outcome is still undecided.
+          const payoutBps = geoMatch.data.status === "settled" ? geoMatch.data.finalPayoutBps : geoMatch.data.payoutBpsIfTrue;
+          const payout = (position.stake * BigInt(payoutBps)) / 10000n;
 
           return {
             address: position.address.toBase58(),
             productAddress: position.product.toBase58(),
             title: presentation.marketTitle,
             matchLabel: presentation.shortScenario,
-            outcome: "Yes",
+            outcome: geoMatch.data.status === "settled" ? (payoutBps > 0 ? "Yes" : "No") : "Pending",
             stake: position.stake,
             payout,
             status: geoMatch.data.status,
