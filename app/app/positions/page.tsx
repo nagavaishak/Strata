@@ -96,7 +96,6 @@ export default function PositionsPage() {
             <span className="text-[10px] font-bold text-white">strata</span>
             <div className="ml-3 hidden gap-3 text-[7px] font-semibold text-muted-foreground md:flex">
               <span>Markets</span>
-              <span>Live</span>
               <span className="text-white">Portfolio</span>
               <span>Create</span>
             </div>
