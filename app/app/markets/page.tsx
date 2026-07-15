@@ -21,6 +21,7 @@ import {
   toMarketCards,
   type MarketCard,
 } from "@/lib/market-collections";
+import { isVerifiedPlay } from "@/lib/verified-plays";
 
 type StatusFilter = "trending" | "live" | "open" | "settled";
 type CategoryFilter = "all" | "football" | "structured" | "exact";
@@ -78,7 +79,15 @@ function MarketsInner() {
 
   const cards = useMemo(() => {
     const merged = toMarketCards(tiered ?? [], geo ?? []);
-    return merged.sort((a, b) => Number(b.entry.data.totalStake - a.entry.data.totalStake));
+    const now = Math.floor(Date.now() / 1000);
+    const curated = merged.filter(({ entry }) => {
+      if (isVerifiedPlay(entry.address.toBase58())) return true;
+      // "Upcoming" means still genuinely tradable — open on-chain AND not past
+      // its close time. An open-but-expired account is unsettled test-script
+      // leftover, not a real upcoming market, so it's excluded unless verified.
+      return entry.data.status === "open" && Number(entry.data.closesAt) > now;
+    });
+    return curated.sort((a, b) => Number(b.entry.data.totalStake - a.entry.data.totalStake));
   }, [geo, tiered]);
 
   const liveNow = useMemo(() => pickLiveNow(cards, liveByFixture), [cards, liveByFixture]);
