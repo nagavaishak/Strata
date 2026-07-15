@@ -4,6 +4,7 @@ import type { GeoProductListEntry, ProductListEntry } from "@/lib/hooks/useAllPr
 import type { GeoProductState } from "@/lib/hooks/useGeoProduct";
 import type { Leg, ProductState } from "@/lib/hooks/useProduct";
 import { statLabel } from "@/lib/stat-labels";
+import { getVerifiedFixture } from "@/lib/fixture-identity";
 
 type FixturePresentation = {
   sport: string;
@@ -21,10 +22,21 @@ export type MarketPresentation = FixturePresentation & {
 };
 
 /** TxLINE only ever exposes a raw fixtureId — no team names, leagues, or kickoff
- * times exist anywhere upstream. Every fixture gets the same honest treatment:
- * the ID as its own identity, never a guessed or invented match. */
+ * times exist anywhere upstream. A verified match (see fixture-identity.ts) gets
+ * its real name; every other fixture gets the same honest fallback: the ID as
+ * its own identity, never a guessed or invented match. */
 export function getFixturePresentation(fixtureId: bigint | number | string): FixturePresentation {
   const id = fixtureId.toString();
+  const verified = getVerifiedFixture(id);
+
+  if (verified) {
+    return {
+      sport: "Football",
+      marketTitle: `${verified.homeTeam} vs ${verified.awayTeam}`,
+      context: `${verified.competition} · proof-backed settlement.`,
+    };
+  }
+
   return {
     sport: "Football",
     marketTitle: `Fixture ${id}`,
