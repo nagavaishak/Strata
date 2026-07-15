@@ -8,6 +8,7 @@
     "@coral-xyz/anchor": "^0.32.0",
     "@solana/spl-token": "^0.4.14",
     "axios": "^1.18.1",
+    "eventsource": "^4.1.0",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
