@@ -120,3 +120,29 @@ Re-run against any live fixture with:
 ```bash
 ANCHOR_WALLET=~/.config/solana/oracle-keypair.json ./node_modules/.bin/ts-node -P tsconfig.json scripts/live-buyer-flow.ts <fixtureId>
 ```
+
+### Second run — fixture 18241006 (England vs Argentina, World Cup, kicked off 2026-07-15 19:00 UTC)
+
+Same flow, run again against a different genuinely-live match. This run also surfaced a
+real external timing dependency worth documenting: `settle_leg`'s CPI into
+`validate_stat` initially failed with `RootNotAvailable` (error 6007) — TxLINE's API had
+already sealed a batch with a `minTimestamp` past `closes_at`, but the txoracle program's
+on-chain merkle root for that time slot hadn't been posted yet by TxOdds' own oracle
+poster. This is a gap between "the data exists in their API" and "the proof root is
+live on-chain," not a bug in Strata.
+
+`scripts/resume-settle.ts <fixtureId> <nonce>` was added to handle exactly this: it
+resumes an already-created product + already-saved proof (from
+`tests/fixtures/live-buyer-flow-proof.json`) and retries just `settle_leg -> finalize ->
+claim`, without repeating the deposit or the multi-minute polling wait. Retrying a few
+minutes later succeeded once the root had landed.
+
+**Product:** `ugwTAvuwPYvqb51y8onVt5ZdSzmmwCYkUT6YzET3VJo`
+**Writer pool:** `i7u34mcv1e6T7f8Q1bxVsWCvyzbgnsNTKu1f4Ay146B`
+**Tx signatures:** create `JbVMiKNQqNjGjRQLZ2SzTB9eFqEoMFZC4HXytDgaaDKCyytJ8mQmk869Htn7VjR4RxJWcqyLyEZz4jt72ZM8Mae`,
+deposit `4wVEoESaFEJkna1uUfXANsT4CUo5riAauo8wgErJQYa3sPwJngmrPt6gVCycew4mK1FVLSEWcEeeY51nL7dKzpJ4`,
+settle (resumed) `424QuC7MoXWWKzNdJczdMAgxKPPZ397ju1F7F6iBDruBBUmTcP2NLCokQL78Er8fBKxLAWqqHfnDL7vXJzgQEWnc`,
+finalize `3Ydn9Z5eb8nJoSbz57ssvU5GM3t5CRRvgKRSTFDUiFswPUuFxLG4oxVYgx9LBRvjmwkX8Abupbv1q9JvGtwqGBdY`,
+claim `3ognmyNnnFAd6Xmmvn8vfiACPfMVMVh7wgjaWr9i9S6b9a5zWt9g5QpdGgM3wAtmUYka2PYUB6QxVmmfpuyNMutu`.
+
+Leg resolved `false` again (`final_payout_bps: 0`) — another real loss, not a rigged win.

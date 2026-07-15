@@ -11,6 +11,11 @@
  * - 9DNhGwCBf2EmtM12ugZMdsAvjr3nLAShfqTNLcvhxJ1Q — "Shared writer pool" proof,
  *   Product B: left open at time of writing to prove reserved-vs-owed
  *   accounting across two simultaneous products.
+ * - ugwTAvuwPYvqb51y8onVt5ZdSzmmwCYkUT6YzET3VJo — live buyer-deposit flow
+ *   against fixture 18241006 (England vs Argentina, genuinely live World Cup
+ *   match at deposit time): real deposit-before-data-existed, real CPI
+ *   settle_leg once the oracle's merkle root landed, real claim. Lost
+ *   (final_payout_bps: 0).
  *
  * /markets only surfaces markets from this list plus anything still open —
  * settled/closed accounts not on this list are routine test-script noise,
@@ -21,6 +26,7 @@ const VERIFIED_PLAY_ADDRESSES = new Set<string>([
   "6UNaWnAMpjHHxzC8KD78wYekjVwNNHKVMnm1rf5TiG9s",
   "GGUUiVL1uKVgEuoHiQnVHnwUre59jXrhNu6nuUjo3ojv",
   "9DNhGwCBf2EmtM12ugZMdsAvjr3nLAShfqTNLcvhxJ1Q",
+  "ugwTAvuwPYvqb51y8onVt5ZdSzmmwCYkUT6YzET3VJo",
 ]);
 
 export function isVerifiedPlay(address: string): boolean {
