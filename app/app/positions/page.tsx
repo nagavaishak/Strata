@@ -6,6 +6,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useAllGeoProducts, useAllProducts, useMyPositions } from "@/lib/hooks/useAllProducts";
 import { formatSol } from "@/lib/format";
 import { getGeoMarketPresentation, getTieredMarketPresentation } from "@/lib/market-presentation";
+import { StrataMark } from "@/components/strata-mark";
 
 type PositionTab = "open" | "pending" | "settled" | "activity";
 
@@ -99,7 +100,7 @@ export default function PositionsPage() {
       ) : (
         <section className="overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,oklch(0.08_0.004_260),oklch(0.07_0.004_260))] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
           <div className="flex items-center gap-2 border-b border-white/8 px-4 py-3">
-            <span className="flex h-4 w-4 items-center justify-center rounded bg-status-true text-[8px] font-extrabold text-black">S</span>
+            <StrataMark className="h-4 w-4" />
             <span className="text-[10px] font-bold text-white">strata</span>
             <div className="ml-3 hidden gap-3 text-[7px] font-semibold text-muted-foreground md:flex">
               <span>Markets</span>

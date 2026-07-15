@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { HeaderSearch } from "@/components/header-search";
 import { HowItWorksModal } from "@/components/how-it-works-modal";
+import { StrataMark } from "@/components/strata-mark";
 
 const WalletMultiButton = dynamic(
   async () => (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
@@ -51,8 +52,8 @@ function SiteHeaderFallback() {
     <header className="sticky top-0 z-40 border-b border-border/50 bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1480px] items-center justify-between px-6 py-5">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-status-true/25 bg-status-true/10 text-status-true">
-            <span className="text-base font-bold">S</span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-status-true/25 bg-status-true/10">
+            <StrataMark className="h-6 w-6" />
           </div>
           <span className="text-xl font-semibold tracking-tight text-foreground">strata</span>
         </Link>
@@ -79,8 +80,8 @@ function SiteHeaderInner() {
       <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-6 px-6 py-5">
         <div className="flex items-center gap-9">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-status-true/25 bg-status-true/10 text-status-true">
-              <span className="text-base font-bold">S</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-status-true/25 bg-status-true/10">
+              <StrataMark className="h-6 w-6" />
             </div>
             <span className="text-xl font-semibold tracking-tight text-foreground">strata</span>
           </Link>
