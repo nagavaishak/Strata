@@ -8,6 +8,8 @@ See [design/diagrams/settlement_architecture.md](design/diagrams/settlement_arch
 
 **Live app:** https://app-wine-six-56.vercel.app · **Devnet program:** [`37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs`](https://explorer.solana.com/address/37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs?cluster=devnet)
 
+Proven twice against genuinely live World Cup matches, not historical data: a real deposit locked in *before* the match had any stats, settled only once TxLINE sealed a batch that postdated the close — see [DEVNET.md](DEVNET.md) for both full runs, real tx signatures included.
+
 - [TECHNICAL.md](TECHNICAL.md) — core idea, technical highlights, TxLINE endpoints used
 - [FEEDBACK.md](FEEDBACK.md) — our experience building against the TxLINE API
 - [DEVNET.md](DEVNET.md) — every proof run, real transaction signatures, deployment notes

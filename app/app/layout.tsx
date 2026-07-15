@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Strata — trustless structured settlement",
+  title: "Strata - trustless structured settlement",
   description:
     "Multi-leg, tiered-payout sports products settled on-chain via TxLINE Merkle proofs. No oracle trust, no self-attested results — every settlement is a permissionless CPI-verified proof.",
 };
