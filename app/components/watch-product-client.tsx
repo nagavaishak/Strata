@@ -8,15 +8,17 @@ import { Button } from "@/components/ui/button";
 import { LegStatusList } from "@/components/leg-status-list";
 import { TakePositionPanel } from "@/components/take-position-panel";
 import { TierLadder } from "@/components/tier-ladder";
+import { useFixtureMetadata } from "@/lib/hooks/useFixtureMetadata";
 import { useProduct } from "@/lib/hooks/useProduct";
 import { useFinalizeProduct } from "@/lib/hooks/useSettlement";
-import { getTieredMarketPresentation } from "@/lib/market-presentation";
+import { getTieredMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
 
 export function WatchProductClient({ productAddress }: { productAddress: string }) {
   const product = new PublicKey(productAddress);
   const { data, isLoading, isError } = useProduct(product);
   const finalize = useFinalizeProduct();
   const [streamStatus, setStreamStatus] = useState<{ live: boolean; lastSeq?: number } | null>(null);
+  const liveIdentity = useFixtureMetadata(data ? [Number(data.fixtureId)] : []);
 
   useEffect(() => {
     if (!data) return;
@@ -46,7 +48,11 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
     return <div className="mx-auto max-w-[1480px] px-4 py-8 text-sm text-status-false">Market not found.</div>;
   }
 
-  const presentation = getTieredMarketPresentation(data);
+  const presentation = withLiveFixtureIdentity(
+    getTieredMarketPresentation(data),
+    data.fixtureId,
+    liveIdentity[Number(data.fixtureId)]
+  );
   const allSettled = data.legResults.every((result) => result !== "unsettled");
   const now = Math.floor(Date.now() / 1000);
   const canSettle = data.status === "open" && now >= Number(data.closesAt);

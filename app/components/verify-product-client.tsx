@@ -4,27 +4,38 @@ import { PublicKey } from "@solana/web3.js";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccountSignatures } from "@/lib/hooks/useAccountSignatures";
+import { useFixtureMetadata } from "@/lib/hooks/useFixtureMetadata";
 import { usePosition } from "@/lib/hooks/usePosition";
 import { useProduct } from "@/lib/hooks/useProduct";
 import { useClaim } from "@/lib/hooks/useSettlement";
 import { formatSol } from "@/lib/format";
-import { getTieredMarketPresentation } from "@/lib/market-presentation";
+import { getTieredMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
 
 export function VerifyProductClient({ productAddress }: { productAddress: string }) {
   const product = new PublicKey(productAddress);
   const { publicKey } = useWallet();
   const { data, isLoading, isError } = useProduct(product);
   const { data: position } = usePosition(product, "tiered");
-  const { data: signatures } = useAccountSignatures(product);
+  const { data: signatures, isLoading: signaturesLoading } = useAccountSignatures(product);
   const claim = useClaim();
+  const liveIdentity = useFixtureMetadata(data ? [Number(data.fixtureId)] : []);
 
   if (isLoading) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading receipt…</div>;
   if (isError || !data) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Product not found.</div>;
 
-  const presentation = getTieredMarketPresentation(data);
+  const presentation = withLiveFixtureIdentity(
+    getTieredMarketPresentation(data),
+    data.fixtureId,
+    liveIdentity[Number(data.fixtureId)]
+  );
   const trueCount = data.legResults.filter((result) => result === "true").length;
   const recomputedPayout = position ? (position.stake * BigInt(data.finalPayoutBps)) / 10000n : 0n;
   const settledSignature = signatures?.find((sig) => sig.blockTime != null);
+  // Devnet's public RPC only retains recent transaction history -- an older,
+  // genuinely-settled product can legitimately have zero signatures left to
+  // fetch. Distinguish "still fetching" from "aged out of RPC retention"
+  // rather than showing an endless, dishonest "Loading..." forever.
+  const signaturesExpired = !signaturesLoading && (signatures?.length ?? 0) === 0;
   const settledOn = settledSignature?.blockTime
     ? new Date(settledSignature.blockTime * 1000).toLocaleString("en-US", {
         month: "short",
@@ -34,7 +45,9 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
         minute: "2-digit",
         timeZoneName: "short",
       })
-    : "Pending confirmation";
+    : signaturesExpired
+      ? "Not retained by this RPC"
+      : "Pending confirmation";
 
   return (
     <div className="mx-auto max-w-[1480px] space-y-6 px-6 py-8">
@@ -69,7 +82,16 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
           <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-status-true">Verification</div>
           <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
             <div className="space-y-2">
-              <ReceiptRow label="Tx Hash" value={signatures?.[0]?.signature.slice(0, 14) ? `${signatures[0].signature.slice(0, 14)}…` : "Loading…"} />
+              <ReceiptRow
+                label="Tx Hash"
+                value={
+                  signatures?.[0]?.signature
+                    ? `${signatures[0].signature.slice(0, 14)}…`
+                    : signaturesExpired
+                      ? "Not retained by this RPC"
+                      : "Loading…"
+                }
+              />
               <ReceiptRow label="Block" value={String(signatures?.[0]?.slot ?? "—")} />
               <ReceiptRow label="Network" value="Solana" />
             </div>
@@ -78,12 +100,19 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
                 href={signatures?.[0]?.signature ? `https://explorer.solana.com/tx/${signatures[0].signature}?cluster=devnet` : "#"}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-10 w-full items-center justify-center rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-white"
+                aria-disabled={!signatures?.[0]?.signature}
+                className={`inline-flex min-h-10 w-full items-center justify-center rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-white ${!signatures?.[0]?.signature ? "pointer-events-none opacity-40" : ""}`}
               >
                 View on Explorer ↗
               </a>
             </div>
           </div>
+          {signaturesExpired && (
+            <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
+              This product&apos;s transaction history has aged out of the public devnet RPC&apos;s retention window. The
+              settlement is still real and on-chain -- see the recorded signatures in DEVNET.md.
+            </p>
+          )}
         </div>
 
         <div className="mt-4 flex items-center gap-2 text-[12px] text-muted-foreground">

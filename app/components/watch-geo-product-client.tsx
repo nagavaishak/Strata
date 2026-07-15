@@ -6,20 +6,26 @@ import { ArrowLeft } from "lucide-react";
 import { MatchIdentity } from "@/components/market-identity";
 import { TakePositionPanel } from "@/components/take-position-panel";
 import { Button } from "@/components/ui/button";
+import { useFixtureMetadata } from "@/lib/hooks/useFixtureMetadata";
 import { useGeoProduct } from "@/lib/hooks/useGeoProduct";
 import { useSettleGeoProduct } from "@/lib/hooks/useGeoProductActions";
 import { bpsToMultiplier, formatSol } from "@/lib/format";
-import { getGeoMarketPresentation } from "@/lib/market-presentation";
+import { getGeoMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
 
 export function WatchGeoProductClient({ productAddress }: { productAddress: string }) {
   const geoProduct = new PublicKey(productAddress);
   const { data, isLoading, isError } = useGeoProduct(geoProduct);
   const settle = useSettleGeoProduct();
+  const liveIdentity = useFixtureMetadata(data ? [Number(data.fixtureId)] : []);
 
   if (isLoading) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading market…</div>;
   if (isError || !data) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Market not found.</div>;
 
-  const presentation = getGeoMarketPresentation(data);
+  const presentation = withLiveFixtureIdentity(
+    getGeoMarketPresentation(data),
+    data.fixtureId,
+    liveIdentity[Number(data.fixtureId)]
+  );
   const canSettle = data.status === "open" && Math.floor(Date.now() / 1000) >= Number(data.closesAt);
 
   return (

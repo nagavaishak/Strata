@@ -6,24 +6,31 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { MatchIdentity } from "@/components/market-identity";
 import { Button } from "@/components/ui/button";
 import { useAccountSignatures } from "@/lib/hooks/useAccountSignatures";
+import { useFixtureMetadata } from "@/lib/hooks/useFixtureMetadata";
 import { useGeoProduct } from "@/lib/hooks/useGeoProduct";
 import { useClaimGeo } from "@/lib/hooks/useGeoProductActions";
 import { usePosition } from "@/lib/hooks/usePosition";
 import { bpsToMultiplier, formatSol } from "@/lib/format";
-import { getGeoMarketPresentation } from "@/lib/market-presentation";
+import { getGeoMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
 
 export function VerifyGeoProductClient({ productAddress }: { productAddress: string }) {
   const geoProduct = new PublicKey(productAddress);
   const { publicKey } = useWallet();
   const { data, isLoading, isError } = useGeoProduct(geoProduct);
   const { data: position } = usePosition(geoProduct, "geo");
-  const { data: signatures } = useAccountSignatures(geoProduct);
+  const { data: signatures, isLoading: signaturesLoading } = useAccountSignatures(geoProduct);
   const claim = useClaimGeo();
+  const liveIdentity = useFixtureMetadata(data ? [Number(data.fixtureId)] : []);
 
   if (isLoading) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-muted-foreground">Loading receipt…</div>;
   if (isError || !data) return <div className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-status-false">Product not found.</div>;
 
-  const presentation = getGeoMarketPresentation(data);
+  const presentation = withLiveFixtureIdentity(
+    getGeoMarketPresentation(data),
+    data.fixtureId,
+    liveIdentity[Number(data.fixtureId)]
+  );
+  const signaturesExpired = !signaturesLoading && (signatures?.length ?? 0) === 0;
   const recomputedPayout = position ? (position.stake * BigInt(data.finalPayoutBps)) / 10000n : 0n;
   const matched = data.finalPayoutBps > 0;
 
@@ -104,7 +111,11 @@ export function VerifyGeoProductClient({ productAddress }: { productAddress: str
                   </a>
                 ))
               ) : (
-                <div className="px-4 py-3 text-sm text-muted-foreground">Loading transaction history…</div>
+                <div className="px-4 py-3 text-sm text-muted-foreground">
+                  {signaturesExpired
+                    ? "This product's transaction history has aged out of the public devnet RPC's retention window. The settlement is still real and on-chain -- see the recorded signatures in DEVNET.md."
+                    : "Loading transaction history…"}
+                </div>
               )}
             </div>
           </div>
