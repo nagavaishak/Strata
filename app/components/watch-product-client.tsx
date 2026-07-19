@@ -130,17 +130,32 @@ export function WatchProductClient({ productAddress }: { productAddress: string 
           </div>
 
           <div className="xl:sticky xl:top-24 xl:self-start">
-            <TakePositionPanel
-              kind="tiered"
-              product={product}
-              totalStake={data.totalStake}
-              maxCapacity={data.maxCapacity}
-              tiers={data.tiers}
-              numLegs={data.numLegs}
-              legResults={data.legResults}
-              marketTitle={presentation.marketTitle}
-              matchLabel={presentation.shortScenario}
-            />
+            {data.status === "open" ? (
+              <TakePositionPanel
+                kind="tiered"
+                product={product}
+                totalStake={data.totalStake}
+                maxCapacity={data.maxCapacity}
+                tiers={data.tiers}
+                numLegs={data.numLegs}
+                legResults={data.legResults}
+                marketTitle={presentation.marketTitle}
+                matchLabel={presentation.shortScenario}
+              />
+            ) : (
+              <div className="market-shell rounded-[18px] border border-border/80 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-status-true">Settled market</p>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  This market is closed. Review the final receipt to see how the settlement was calculated.
+                </p>
+                <Link
+                  href={`/verify/${productAddress}`}
+                  className="btn-gradient mt-4 inline-flex min-h-10 items-center rounded-full px-5 py-2 text-sm font-semibold"
+                >
+                  View receipt
+                </Link>
+              </div>
+            )}
 
             <div className="mt-4 rounded-[18px] border border-border/80 bg-background/30 p-4 text-[10px] text-muted-foreground">
               {streamStatus?.live
