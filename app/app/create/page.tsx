@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LegEditor, emptyLeg } from "@/components/leg-editor";
 import { TierEditor, defaultTiers } from "@/components/tier-editor";
+import { WriterPoolPanel } from "@/components/writer-pool-panel";
 import { useCreateProduct, useDeposit } from "@/lib/hooks/useProductActions";
 import { describeTier, getCreateStudioSummary, getFixturePresentation } from "@/lib/market-presentation";
 import type { Leg, Tier } from "@/lib/hooks/useProduct";
@@ -62,6 +63,10 @@ export default function CreatePage() {
               {step}
             </div>
           ))}
+        </div>
+
+        <div className="mt-4">
+          <WriterPoolPanel />
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -143,6 +148,12 @@ export default function CreatePage() {
                   </Link>
                 </div>
               </div>
+            ) : null}
+
+            {createProduct.isError ? (
+              <p className="mt-4 rounded-[14px] border border-status-false/30 bg-status-false/5 p-4 text-sm text-status-false">
+                {(createProduct.error as Error).message}
+              </p>
             ) : null}
           </div>
 
