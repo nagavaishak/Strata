@@ -146,3 +146,22 @@ finalize `3Ydn9Z5eb8nJoSbz57ssvU5GM3t5CRRvgKRSTFDUiFswPUuFxLG4oxVYgx9LBRvjmwkX8A
 claim `3ognmyNnnFAd6Xmmvn8vfiACPfMVMVh7wgjaWr9i9S6b9a5zWt9g5QpdGgM3wAtmUYka2PYUB6QxVmmfpuyNMutu`.
 
 Leg resolved `false` again (`final_payout_bps: 0`) — another real loss, not a rigged win.
+
+## Devnet RPC transaction-history retention
+
+The public `api.devnet.solana.com` node prunes transaction history fast --
+`getSignaturesForAddress`/`getTransaction` for the very first live-buyer-flow
+proof above (fixture 18187298) already returned nothing within days, and the
+second run's signature was gone within hours (Solana Explorer itself refused
+to show it: "Transactions processed before block 476997761 are not available
+at this time"). `/verify` already degrades honestly when this happens --
+falls back to "Not retained by this RPC" instead of an endless "Loading..."
+or fabricated data -- but that's a fallback, not a fix.
+
+The real fix: production's `NEXT_PUBLIC_RPC_URL` now points at a Helius
+devnet endpoint instead of the public node, which retains history for far
+longer. Confirmed directly: the same transaction the public RPC and Solana
+Explorer had both already dropped was still fully readable via
+`getTransaction` through Helius. Local dev / `.env.example` still default to
+the public endpoint, since retention doesn't matter for quick local testing
+-- only the deployed app needs the longer window.
