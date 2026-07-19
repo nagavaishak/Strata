@@ -70,6 +70,7 @@ proof, not from who submitted it.
 - `GET /api/scores/stat-validation?fixtureId=&seq=&statKey=` — V1 single-stat proof fetch
 - `GET /api/scores/stat-validation?fixtureId=&seq=&statKeys=a,b` — V2 multi-stat proof fetch
 - `GET /api/scores/stream` (SSE) — live match event stream, used to confirm a fixture is actually live
+- `GET /api/fixtures/snapshot?startEpochDay=` — resolves a fixtureId to real team names/competition (TxLINE exposes no team metadata on the stat/score endpoints, so `/markets` scans this in 30-day windows to show honest match identity instead of a raw fixture ID)
 
 **On-chain (CPI into TxLINE's `txoracle` program):**
 - `subscribe` — free-tier API access, called once per writer keypair
