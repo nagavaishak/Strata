@@ -6,7 +6,9 @@ Instead of a binary win/lose market, a Strata product bundles N stat conditions 
 
 See [design/diagrams/settlement_architecture.md](design/diagrams/settlement_architecture.md) for the full pipeline, account map, and instruction set.
 
-**Live app:** https://app-wine-six-56.vercel.app · **Devnet program:** [`37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs`](https://explorer.solana.com/address/37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs?cluster=devnet)
+**Demo video:** https://youtu.be/WDlSXoMslXY
+
+**Live app:** https://stratamarkets.vercel.app (also live at https://app-wine-six-56.vercel.app) · **Devnet program:** [`37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs`](https://explorer.solana.com/address/37E8GYEQhcLdk9jneEAsWaPvKCyyJ1LF19iJNzNUUPRs?cluster=devnet)
 
 Proven twice against genuinely live World Cup matches, not historical data: a real deposit locked in *before* the match had any stats, settled only once TxLINE sealed a batch that postdated the close — see [DEVNET.md](DEVNET.md) for both full runs, real tx signatures included.
 
