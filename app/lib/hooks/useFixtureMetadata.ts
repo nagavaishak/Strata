@@ -8,12 +8,29 @@ export interface LiveFixtureIdentity {
   competition: string;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchOne(id: number): Promise<LiveFixtureIdentity | null> {
+  try {
+    const res = await fetch(`/api/txline/fixture-metadata?fixtureId=${id}`);
+    const json = await res.json();
+    return json && json.homeTeam ? (json as LiveFixtureIdentity) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Batches live fixture-metadata lookups the same way useLiveFixtures batches
  * stream-status polling — one shared fetch pass across a set of fixtures
  * instead of one request per card. Team names/competition don't change, so
  * unlike useLiveFixtures this fetches once per fixtureId set rather than
  * polling on an interval.
+ *
+ * TxLINE's session token occasionally 403s on a cold serverless instance
+ * (see DEVNET.md) -- a single failed attempt used to leave a fixture stuck
+ * unresolved for the rest of that page load. Retries once after a short
+ * delay before giving up.
  */
 export function useFixtureMetadata(fixtureIds: number[]) {
   const [state, setState] = useState<Record<number, LiveFixtureIdentity | null>>({});
@@ -26,13 +43,12 @@ export function useFixtureMetadata(fixtureIds: number[]) {
     (async () => {
       const results = await Promise.all(
         fixtureIds.map(async (id) => {
-          try {
-            const res = await fetch(`/api/txline/fixture-metadata?fixtureId=${id}`);
-            const json = await res.json();
-            return [id, json && json.homeTeam ? (json as LiveFixtureIdentity) : null] as const;
-          } catch {
-            return [id, null] as const;
+          let identity = await fetchOne(id);
+          if (!identity && !cancelled) {
+            await sleep(1200);
+            identity = await fetchOne(id);
           }
+          return [id, identity] as const;
         })
       );
       if (!cancelled) setState(Object.fromEntries(results));
