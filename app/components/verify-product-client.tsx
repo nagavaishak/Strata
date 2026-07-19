@@ -7,6 +7,7 @@ import { useFixtureMetadata } from "@/lib/hooks/useFixtureMetadata";
 import { usePosition } from "@/lib/hooks/usePosition";
 import { useProduct } from "@/lib/hooks/useProduct";
 import { useClaim } from "@/lib/hooks/useSettlement";
+import { explorerTxUrl } from "@/lib/explorer";
 import { formatSol } from "@/lib/format";
 import { getTieredMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
 import { parsePublicKey } from "@/lib/solana-address";
@@ -97,7 +98,7 @@ export function VerifyProductClient({ productAddress }: { productAddress: string
             </div>
             <div className="flex items-end">
               <a
-                href={signatures?.[0]?.signature ? `https://explorer.solana.com/tx/${signatures[0].signature}?cluster=devnet` : "#"}
+                href={signatures?.[0]?.signature ? explorerTxUrl(signatures[0].signature) : "#"}
                 target="_blank"
                 rel="noreferrer"
                 aria-disabled={!signatures?.[0]?.signature}

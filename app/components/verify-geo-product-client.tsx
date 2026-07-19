@@ -9,6 +9,7 @@ import { useFixtureMetadata } from "@/lib/hooks/useFixtureMetadata";
 import { useGeoProduct } from "@/lib/hooks/useGeoProduct";
 import { useClaimGeo } from "@/lib/hooks/useGeoProductActions";
 import { usePosition } from "@/lib/hooks/usePosition";
+import { explorerTxUrl } from "@/lib/explorer";
 import { bpsToMultiplier, formatSol } from "@/lib/format";
 import { getGeoMarketPresentation, withLiveFixtureIdentity } from "@/lib/market-presentation";
 import { parsePublicKey } from "@/lib/solana-address";
@@ -99,7 +100,7 @@ export function VerifyGeoProductClient({ productAddress }: { productAddress: str
                 signatures.map((signature) => (
                   <a
                     key={signature.signature}
-                    href={`https://explorer.solana.com/tx/${signature.signature}?cluster=devnet`}
+                    href={explorerTxUrl(signature.signature)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:bg-background/40 hover:text-foreground"
